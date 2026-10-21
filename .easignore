@@ -1,0 +1,14 @@
+# EAS archive exclusions for the QR Attendance project
+.git
+node_modules
+.expo
+dist
+web-build
+docs
+*.log
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.env*
