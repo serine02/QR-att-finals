@@ -1,8 +1,11 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 
 import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 
-type Props = { title: string };
+type Props = {
+  title: string;
+};
 
 export default function Header({ title }: Props) {
   return (
@@ -23,17 +26,17 @@ export default function Header({ title }: Props) {
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    paddingVertical: 24,
+    paddingVertical: 18,
   },
 
   logoCircle: {
     width: 72,
     height: 72,
-    borderRadius: 36,
+    borderRadius: UI.radius.large,
     backgroundColor: COLORS.surface,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
     overflow: "hidden",
   },
 
@@ -43,8 +46,9 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 24,
+    fontSize: UI.typography.page,
     fontWeight: "700",
     color: COLORS.textPrimary,
+    textAlign: "center",
   },
 });

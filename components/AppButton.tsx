@@ -1,12 +1,13 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { COLORS } from '@/constants/colors';
+import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 
 type Props = {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
-  theme?: 'primary';
+  theme?: "primary";
   disabled?: boolean;
   onPress: () => void;
 };
@@ -15,71 +16,88 @@ export default function AppButton({
   title,
   icon,
   theme,
-  disabled,
+  disabled = false,
   onPress,
 }: Props) {
-  if (theme === 'primary') {
-    return (
-      <View
-        style={[
-          styles.buttonOuter,
-          { borderWidth: 3, borderColor: COLORS.primary, borderRadius: 18 },
-        ]}
-      >
-        <Pressable
-          style={[styles.buttonInner, { backgroundColor: COLORS.primary }]}
-          disabled={disabled}
-          onPress={onPress}
-        >
-          <Ionicons
-            name={icon}
-            size={22}
-            color={COLORS.textOnPrimary}
-            style={styles.icon}
-          />
-          <Text style={[styles.label, { color: COLORS.textOnPrimary }]}>
-            {title}
-          </Text>
-        </Pressable>
-      </View>
-    );
-  }
+  const primary = theme === "primary";
 
   return (
-    <View style={styles.buttonOuter}>
+    <View style={styles.wrapper}>
       <Pressable
-        style={styles.buttonInner}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={onPress}
+        style={({ pressed }) => [
+          styles.button,
+          primary ? styles.primary : styles.secondary,
+          pressed && styles.pressed,
+          disabled && styles.disabled,
+        ]}
       >
         <Ionicons
           name={icon}
-          size={22}
-          color={COLORS.textSecondary}
+          size={20}
+          color={primary ? COLORS.textOnPrimary : COLORS.primary}
           style={styles.icon}
         />
-        <Text style={styles.label}>{title}</Text>
+
+        <Text style={[styles.label, primary && styles.primaryLabel]}>
+          {title}
+        </Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  buttonOuter: {
-    width: '100%',
-    marginBottom: 14,
+  wrapper: {
+    width: "100%",
+    marginBottom: 12,
   },
-  buttonInner: {
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
+
+  button: {
+    minHeight: 52,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    borderRadius: UI.radius.large,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+
+  primary: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+
+  secondary: {
     backgroundColor: COLORS.card,
-    boxShadow: "0px 2px 4px rgba(13, 71, 161, 0.1)",
-    elevation: 3,
+    borderColor: COLORS.border,
   },
-  icon: { paddingRight: 10 },
-  label: { fontSize: 17, fontWeight: '600', color: COLORS.textPrimary },
+
+  pressed: {
+    opacity: 0.78,
+  },
+
+  disabled: {
+    opacity: 0.5,
+  },
+
+  icon: {
+    marginRight: 10,
+  },
+
+  label: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+    textAlign: "center",
+  },
+
+  primaryLabel: {
+    color: COLORS.textOnPrimary,
+  },
 });

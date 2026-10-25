@@ -136,13 +136,6 @@ export default function LoginScreen() {
                 editable={!loading}
               />
 
-              <Text
-                style={styles.forgotLink}
-                onPress={() => router.push('/forgot-password')}
-              >
-                Forgot password?
-              </Text>
-
               {error && <Text style={styles.error}>{error}</Text>}
 
               {loading ? (
@@ -228,13 +221,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 12,
     marginBottom: 4,
-  },
-  forgotLink: {
-    fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: "600",
-    textAlign: "right",
-    marginTop: 10,
   },
   loader: {
     marginVertical: 16,

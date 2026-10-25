@@ -133,23 +133,41 @@ export default function ProfileScreen() {
     setEditing(false);
   };
 
-  // Sign out and return to the login screen.
-  const handleSignOut = async () => {
+  // Check the sign-out result before navigating away.
+  const performSignOut = async () => {
     if (loading || saving) return;
-
     setLoading(true);
 
     try {
-      await signOut();
+      const { error } = await signOut();
+      if (error) {
+        Alert.alert("Sign Out Failed", error.message);
+        return;
+      }
       router.replace("/login");
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Failed to sign out.";
-
       Alert.alert("Sign Out Failed", message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSignOut = () => {
+    if (loading || saving) return;
+    Alert.alert(
+      "Sign Out?",
+      "Are you sure you want to sign out of your account?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: () => void performSignOut(),
+        },
+      ],
+    );
   };
 
   // Determine the displayed account role.
@@ -175,7 +193,7 @@ export default function ProfileScreen() {
   if (loading && !profile) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#246B67" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
@@ -189,7 +207,7 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#246B67"
+            tintColor={COLORS.primary}
           />
         }
         keyboardShouldPersistTaps="handled"
@@ -407,13 +425,13 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   refreshButton: {
-    backgroundColor: "#E3F1EE",
+    backgroundColor: COLORS.surface,
     paddingHorizontal: 13,
     paddingVertical: 10,
     borderRadius: 10,
   },
   refreshButtonText: {
-    color: "#246B67",
+    color: COLORS.primary,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -423,19 +441,19 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: "#E5ECE9",
+    borderColor: COLORS.border,
   },
   profileIcon: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#DDEFEA",
+    backgroundColor: COLORS.surface,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 14,
   },
   profileIconText: {
-    color: "#246B67",
+    color: COLORS.primary,
     fontSize: 25,
     fontWeight: "800",
   },
@@ -497,17 +515,17 @@ const styles = StyleSheet.create({
   editButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#EAF3F1",
+    backgroundColor: COLORS.surface,
     borderRadius: 9,
   },
   editButtonText: {
-    color: "#246B67",
+    color: COLORS.primary,
     fontSize: 12,
     fontWeight: "800",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#D7E3DF",
+    borderColor: COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 11,
@@ -522,7 +540,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   saveButton: {
-    backgroundColor: "#246B67",
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -539,7 +557,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   cancelButton: {
-    backgroundColor: "#EDF1F0",
+    backgroundColor: COLORS.surface,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -547,7 +565,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cancelButtonText: {
-    color: "#526563",
+    color: COLORS.textSecondary,
     fontSize: 12,
     fontWeight: "800",
   },

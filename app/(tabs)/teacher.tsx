@@ -79,6 +79,25 @@ function parseTypedDateTime(dateText: string, timeText: string) {
   return date;
 }
 
+function getEventStatus(event: CloudEvent) {
+  if (!event.start_time || !event.end_time) {
+    return "Unscheduled";
+  }
+
+  const start = new Date(event.start_time).getTime();
+  const end = new Date(event.end_time).getTime();
+  const now = Date.now();
+
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+    return "Unscheduled";
+  }
+
+  if (now < start) return "Upcoming";
+  if (now >= end) return "Ended";
+
+  return "Ongoing";
+}
+
 const QUICK_END_OPTIONS = [
   { label: "+30 min", ms: 30 * 60 * 1000 },
   { label: "+1 hour", ms: 60 * 60 * 1000 },
@@ -91,6 +110,7 @@ export default function TeacherScreen() {
   const { user } = useAuth();
 
   const [role, setRole] = useState<Role | null>(null);
+  const [showForm, setShowForm] = useState(false);
   const [roleLoading, setRoleLoading] = useState(true);
 
   const [title, setTitle] = useState("");
@@ -217,7 +237,8 @@ export default function TeacherScreen() {
         return;
       }
 
-      setMessage("Event saved! Scan the QR with the Scan tab to test it.");
+      setMessage("Event created successfully! Your QR code is below.");
+      setShowForm(false);
 
       setPayload(
         JSON.stringify({
@@ -226,7 +247,7 @@ export default function TeacherScreen() {
           title: event.title,
           start: event.start,
           end: event.end,
-        })
+        }),
       );
 
       if (user) {
@@ -248,7 +269,7 @@ export default function TeacherScreen() {
         title: ev.title,
         start: ev.start_time ?? "",
         end: ev.end_time ?? "",
-      })
+      }),
     );
   };
 
@@ -283,6 +304,7 @@ export default function TeacherScreen() {
   const handleEditEvent = (ev: CloudEvent) => {
     setMessage(`Editing "${ev.title}". Change the details below.`);
 
+    setShowForm(true);
     setEditingEvent(ev);
     setTitle(ev.title);
     setEventId(ev.event_code);
@@ -297,6 +319,7 @@ export default function TeacherScreen() {
     setMessage(null);
 
     setEditingEvent(null);
+    setShowForm(false);
     setTitle("");
     setEventId("");
   };
@@ -332,7 +355,8 @@ export default function TeacherScreen() {
         return;
       }
 
-      setMessage("Event updated! The QR below is the updated one.");
+      setMessage("Event updated successfully! The updated QR code is below.");
+      setShowForm(false);
 
       setEditingEvent(null);
       setPayload(
@@ -342,7 +366,7 @@ export default function TeacherScreen() {
           title: event.title,
           start: event.start,
           end: event.end,
-        })
+        }),
       );
       refreshEvents();
     });
@@ -411,164 +435,218 @@ export default function TeacherScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>Create Event QR</Text>
-
-      <Text style={styles.subtitle}>
-        Fill in the event details, then scan the generated QR with the Scan tab.
-      </Text>
-
-      <Text style={styles.label}>Event Title</Text>
-
-      <TextInput
-        style={styles.input}
-        value={title}
-        onChangeText={setTitle}
-        placeholder="e.g. Founders Day Assembly"
-        placeholderTextColor={COLORS.textSecondary}
-      />
-
-      <Text style={styles.label}>Event Code</Text>
-
-      <TextInput
-        style={styles.input}
-        value={eventId}
-        onChangeText={setEventId}
-        placeholder="e.g. EVT-2026-0002"
-        placeholderTextColor={COLORS.textSecondary}
-        autoCapitalize="characters"
-      />
-
-      <Text style={styles.label}>Starts</Text>
-
-      {Platform.OS === "web" ? (
-        <WebDateTimeInput value={startDate} onChange={setStartDate} />
-      ) : (
-        <PickerField
-          value={formatDateTime(startDate)}
-          icon="sunny-outline"
-          onPress={() => openPicker("start")}
-        />
-      )}
-
-      <Text style={styles.label}>Ends</Text>
-
-      {Platform.OS === "web" ? (
-        <WebDateTimeInput value={endDate} onChange={setEndDate} />
-      ) : (
-        <PickerField
-          value={formatDateTime(endDate)}
-          icon="moon-outline"
-          onPress={() => openPicker("end")}
-        />
-      )}
-
-      <Text style={styles.label}>Or type the date & time manually</Text>
-
-      <Text style={styles.fieldLabel}>Start Date (YYYY-MM-DD)</Text>
-
-      <TextInput
-        style={styles.input}
-        value={startDateText}
-        onChangeText={setStartDateText}
-        placeholder="e.g. 2026-10-05"
-        placeholderTextColor={COLORS.textSecondary}
-        autoCapitalize="none"
-      />
-
-      <Text style={styles.fieldLabel}>Start Time (HH:MM)</Text>
-
-      <TextInput
-        style={styles.input}
-        value={startTimeText}
-        onChangeText={setStartTimeText}
-        placeholder="e.g. 09:00"
-        placeholderTextColor={COLORS.textSecondary}
-        autoCapitalize="none"
-        keyboardType="numbers-and-punctuation"
-      />
-
-      <Text style={styles.fieldLabel}>End Date (YYYY-MM-DD)</Text>
-
-      <TextInput
-        style={styles.input}
-        value={endDateText}
-        onChangeText={setEndDateText}
-        placeholder="e.g. 2026-10-05"
-        placeholderTextColor={COLORS.textSecondary}
-        autoCapitalize="none"
-      />
-
-      <Text style={styles.fieldLabel}>End Time (HH:MM)</Text>
-
-      <TextInput
-        style={styles.input}
-        value={endTimeText}
-        onChangeText={setEndTimeText}
-        placeholder="e.g. 11:00"
-        placeholderTextColor={COLORS.textSecondary}
-        autoCapitalize="none"
-        keyboardType="numbers-and-punctuation"
-      />
-
-      <AppButton
-        title="Apply Typed Date & Time"
-        icon="checkmark-circle-outline"
-        onPress={applyTypedTime}
-      />
-
-      <View style={styles.chipRow}>
-        {QUICK_END_OPTIONS.map((option) => (
-          <Pressable
-            key={option.label}
-            style={styles.chip}
-            onPress={() => handleQuickEnd(option.ms)}
-          >
-            <Text style={styles.chipText}>{option.label}</Text>
-          </Pressable>
-        ))}
+      <View style={styles.pageHeading}>
+        <View style={styles.headingIcon}>
+          <Ionicons name="school-outline" size={24} color={COLORS.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.pageTitle}>Teacher Events</Text>
+          <Text style={styles.pageSubtitle}>
+            Create events and manage QR attendance.
+          </Text>
+        </View>
       </View>
 
-      <Text style={styles.hint}>
-        Tap a chip to set the end time from start.
-      </Text>
+      <Pressable
+        style={styles.primaryCreateButton}
+        onPress={() => {
+          if (showForm && !editingEvent) {
+            setShowForm(false);
+          } else {
+            setEditingEvent(null);
+            setTitle("");
+            setEventId("");
+            setMessage(null);
+            setShowForm(true);
+          }
+        }}
+      >
+        <Ionicons
+          name={
+            showForm && !editingEvent
+              ? "close-circle-outline"
+              : "add-circle-outline"
+          }
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.primaryCreateText}>
+          {showForm && !editingEvent ? "Close Event Form" : "Create New Event"}
+        </Text>
+      </Pressable>
 
-      {message && <Text style={styles.message}>{message}</Text>}
+      {message && !showForm && <Text style={styles.noticeText}>{message}</Text>}
 
-      {editingEvent ? (
-        <View style={styles.editControls}>
-          <AppButton
-            theme="primary"
-            title="Update Event"
-            icon="checkmark-circle-outline"
-            onPress={handleUpdateEvent}
+      {showForm && (
+        <View style={styles.formCard}>
+          <Text style={styles.formHeading}>
+            {editingEvent ? "Edit Event" : "Create Event QR"}
+          </Text>
+          <Text style={styles.formDescription}>
+            Enter the event code, schedule, and details below.
+          </Text>
+
+          <Text style={styles.label}>Event Title</Text>
+
+          <TextInput
+            style={styles.input}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="e.g. Founders Day Assembly"
+            placeholderTextColor={COLORS.textSecondary}
           />
 
-          <Pressable
-            style={styles.cancelEditButton}
-            onPress={handleCancelEdit}
-          >
-            <Text style={styles.cancelEditText}>Cancel Editing</Text>
-          </Pressable>
+          <Text style={styles.label}>Event Code</Text>
+
+          <TextInput
+            style={styles.input}
+            value={eventId}
+            onChangeText={setEventId}
+            placeholder="e.g. EVT-2026-0002"
+            placeholderTextColor={COLORS.textSecondary}
+            autoCapitalize="characters"
+          />
+
+          <Text style={styles.label}>Starts</Text>
+
+          {Platform.OS === "web" ? (
+            <WebDateTimeInput value={startDate} onChange={setStartDate} />
+          ) : (
+            <PickerField
+              value={formatDateTime(startDate)}
+              icon="sunny-outline"
+              onPress={() => openPicker("start")}
+            />
+          )}
+
+          <Text style={styles.label}>Ends</Text>
+
+          {Platform.OS === "web" ? (
+            <WebDateTimeInput value={endDate} onChange={setEndDate} />
+          ) : (
+            <PickerField
+              value={formatDateTime(endDate)}
+              icon="moon-outline"
+              onPress={() => openPicker("end")}
+            />
+          )}
+
+          <Text style={styles.label}>Or type the date & time manually</Text>
+
+          <Text style={styles.fieldLabel}>Start Date (YYYY-MM-DD)</Text>
+
+          <TextInput
+            style={styles.input}
+            value={startDateText}
+            onChangeText={setStartDateText}
+            placeholder="e.g. 2026-10-05"
+            placeholderTextColor={COLORS.textSecondary}
+            autoCapitalize="none"
+          />
+
+          <Text style={styles.fieldLabel}>Start Time (HH:MM)</Text>
+
+          <TextInput
+            style={styles.input}
+            value={startTimeText}
+            onChangeText={setStartTimeText}
+            placeholder="e.g. 09:00"
+            placeholderTextColor={COLORS.textSecondary}
+            autoCapitalize="none"
+            keyboardType="numbers-and-punctuation"
+          />
+
+          <Text style={styles.fieldLabel}>End Date (YYYY-MM-DD)</Text>
+
+          <TextInput
+            style={styles.input}
+            value={endDateText}
+            onChangeText={setEndDateText}
+            placeholder="e.g. 2026-10-05"
+            placeholderTextColor={COLORS.textSecondary}
+            autoCapitalize="none"
+          />
+
+          <Text style={styles.fieldLabel}>End Time (HH:MM)</Text>
+
+          <TextInput
+            style={styles.input}
+            value={endTimeText}
+            onChangeText={setEndTimeText}
+            placeholder="e.g. 11:00"
+            placeholderTextColor={COLORS.textSecondary}
+            autoCapitalize="none"
+            keyboardType="numbers-and-punctuation"
+          />
+
+          <AppButton
+            title="Apply Typed Date & Time"
+            icon="checkmark-circle-outline"
+            onPress={applyTypedTime}
+          />
+
+          <View style={styles.chipRow}>
+            {QUICK_END_OPTIONS.map((option) => (
+              <Pressable
+                key={option.label}
+                style={styles.chip}
+                onPress={() => handleQuickEnd(option.ms)}
+              >
+                <Text style={styles.chipText}>{option.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={styles.hint}>
+            Tap a chip to set the end time from start.
+          </Text>
+
+          {message && <Text style={styles.message}>{message}</Text>}
+
+          {editingEvent ? (
+            <View style={styles.editControls}>
+              <AppButton
+                theme="primary"
+                title="Update Event"
+                icon="checkmark-circle-outline"
+                onPress={handleUpdateEvent}
+              />
+
+              <Pressable
+                style={styles.cancelEditButton}
+                onPress={handleCancelEdit}
+              >
+                <Text style={styles.cancelEditText}>Cancel Editing</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <AppButton
+              theme="primary"
+              title="Create Event"
+              icon="add-circle-outline"
+              onPress={handleCreateEvent}
+            />
+          )}
         </View>
-      ) : (
-        <AppButton
-          theme="primary"
-          title="Create Event"
-          icon="add-circle-outline"
-          onPress={handleCreateEvent}
-        />
       )}
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Your Events</Text>
 
-        {existingEvents.length > 0 && (
+        <View style={styles.sectionControls}>
           <Text style={styles.sectionCount}>{existingEvents.length}</Text>
-        )}
+          <Pressable
+            accessibilityLabel="Refresh events"
+            onPress={refreshEvents}
+            style={styles.refreshButton}
+          >
+            <Ionicons name="refresh" size={19} color={COLORS.primary} />
+          </Pressable>
+        </View>
       </View>
 
       <Text style={styles.sectionHint}>
-        Tap an existing event to show its QR code again.
+        See each event's status and manage its QR code.
       </Text>
 
       {existingLoading ? (
@@ -577,62 +655,116 @@ export default function TeacherScreen() {
         <Text style={styles.subtitle}>No events created yet.</Text>
       ) : (
         <View>
-          {existingEvents.map((ev) => (
-            <View key={ev.id} style={styles.existingCard}>
-              <Pressable
-                style={styles.existingMain}
-                onPress={() => handleShowExisting(ev)}
-              >
-                <Ionicons
-                  name="qr-code-outline"
-                  size={20}
-                  color={COLORS.primary}
-                />
+          {existingEvents.map((ev) => {
+            const status = getEventStatus(ev);
+            return (
+              <View key={ev.id} style={styles.eventCard}>
+                <View style={styles.eventCardHeading}>
+                  <Text style={styles.eventCardTitle}>{ev.title}</Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      status === "Upcoming"
+                        ? styles.upcomingBadge
+                        : status === "Ongoing"
+                          ? styles.ongoingBadge
+                          : status === "Ended"
+                            ? styles.endedBadge
+                            : styles.unscheduledBadge,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusText,
+                        status === "Upcoming"
+                          ? styles.upcomingText
+                          : status === "Ongoing"
+                            ? styles.ongoingText
+                            : status === "Ended"
+                              ? styles.endedText
+                              : styles.unscheduledText,
+                      ]}
+                    >
+                      {status}
+                    </Text>
+                  </View>
+                </View>
 
-                <View style={styles.existingInfo}>
-                  <Text style={styles.existingTitle}>{ev.title}</Text>
-
-                  <Text style={styles.existingCode}>
-                    {ev.event_code}
+                <View style={styles.eventDetailRow}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={16}
+                    color={COLORS.textSecondary}
+                  />
+                  <Text style={styles.eventDetailText}>
+                    Starts:{" "}
                     {ev.start_time
-                      ? `  •  ${formatDateTime(new Date(ev.start_time))}`
-                      : ""}
+                      ? formatDateTime(new Date(ev.start_time))
+                      : "Not set"}
                   </Text>
                 </View>
-              </Pressable>
-
-              <View style={styles.existingActions}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    pressed && styles.actionButtonPressed,
-                  ]}
-                  onPress={() => handleEditEvent(ev)}
-                >
+                <View style={styles.eventDetailRow}>
                   <Ionicons
-                    name="pencil-outline"
-                    size={18}
-                    color={COLORS.primary}
+                    name="time-outline"
+                    size={16}
+                    color={COLORS.textSecondary}
                   />
-                </Pressable>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    styles.dangerButton,
-                    pressed && styles.actionButtonPressed,
-                  ]}
-                  onPress={() => handleDeleteEvent(ev)}
-                >
+                  <Text style={styles.eventDetailText}>
+                    Ends:{" "}
+                    {ev.end_time
+                      ? formatDateTime(new Date(ev.end_time))
+                      : "Not set"}
+                  </Text>
+                </View>
+                <View style={styles.eventDetailRow}>
                   <Ionicons
-                    name="trash-outline"
-                    size={18}
-                    color={COLORS.danger}
+                    name="qr-code-outline"
+                    size={16}
+                    color={COLORS.textSecondary}
                   />
-                </Pressable>
+                  <Text style={styles.eventDetailText}>
+                    Code: {ev.event_code}
+                  </Text>
+                </View>
+
+                <View style={styles.eventButtonRow}>
+                  <Pressable
+                    style={[styles.eventAction, styles.showQrAction]}
+                    onPress={() => handleShowExisting(ev)}
+                  >
+                    <Ionicons
+                      name="qr-code-outline"
+                      size={17}
+                      color="#FFFFFF"
+                    />
+                    <Text style={styles.showQrText}>Show QR</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.eventAction, styles.neutralAction]}
+                    onPress={() => handleEditEvent(ev)}
+                  >
+                    <Ionicons
+                      name="pencil-outline"
+                      size={17}
+                      color={COLORS.textPrimary}
+                    />
+                    <Text style={styles.neutralActionText}>Edit</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.eventAction, styles.neutralAction]}
+                    onPress={() => handleDeleteEvent(ev)}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={17}
+                      color={COLORS.danger}
+                    />
+                    <Text style={styles.neutralActionText}>Delete</Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
 
@@ -731,6 +863,128 @@ function PickerField({ value, icon, onPress }: PickerFieldProps) {
 }
 
 const styles = StyleSheet.create({
+  pageHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    gap: 12,
+  },
+  headingIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: COLORS.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pageTitle: { fontSize: 24, fontWeight: "800", color: COLORS.textPrimary },
+  pageSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: 3,
+    lineHeight: 19,
+  },
+  primaryCreateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 9,
+    marginBottom: 8,
+  },
+  primaryCreateText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
+  formCard: {
+    backgroundColor: COLORS.card,
+    padding: 17,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: 14,
+  },
+  formHeading: { fontSize: 18, fontWeight: "700", color: COLORS.textPrimary },
+  formDescription: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: 5,
+    marginBottom: 8,
+  },
+  noticeText: {
+    fontSize: 13,
+    color: COLORS.primary,
+    textAlign: "center",
+    marginTop: 12,
+  },
+  sectionControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: "auto",
+    gap: 9,
+  },
+  refreshButton: {
+    width: 36,
+    height: 36,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eventCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 16,
+    marginTop: 12,
+    elevation: 2,
+  },
+  eventCardHeading: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 11,
+  },
+  eventCardTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+  },
+  eventDetailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    marginTop: 7,
+  },
+  eventDetailText: { flex: 1, fontSize: 12, color: COLORS.textSecondary },
+  eventButtonRow: { flexDirection: "row", gap: 8, marginTop: 17 },
+  eventAction: {
+    flex: 1,
+    minHeight: 43,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    borderRadius: 12,
+    paddingHorizontal: 4,
+  },
+  showQrAction: { backgroundColor: COLORS.primary },
+  showQrText: { color: "#FFFFFF", fontWeight: "700", fontSize: 12 },
+  neutralAction: { backgroundColor: COLORS.surface },
+  neutralActionText: {
+    color: COLORS.textPrimary,
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  upcomingText: { color: "#1D4ED8" },
+  ongoingText: { color: "#166534" },
+  endedText: { color: "#475569" },
+  unscheduledText: { color: "#92400E" },
+
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -903,6 +1157,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: COLORS.textPrimary,
+    flexShrink: 1,
+  },
+  eventTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  statusBadge: {
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+  },
+  upcomingBadge: {
+    backgroundColor: "#DBEAFE",
+  },
+  ongoingBadge: {
+    backgroundColor: "#DCFCE7",
+  },
+  endedBadge: {
+    backgroundColor: "#F3F4F6",
+  },
+  unscheduledBadge: {
+    backgroundColor: "#FEF3C7",
   },
   existingCode: {
     fontSize: 12,

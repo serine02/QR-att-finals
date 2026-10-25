@@ -1,8 +1,7 @@
-// lib/auth.ts
-
 import { useEffect, useState } from "react";
-import { supabase } from "./supabase";
 import type { Session, User } from "@supabase/supabase-js";
+
+import { supabase } from "./supabase";
 
 type AuthState = {
   session: Session | null;
@@ -15,92 +14,130 @@ export type SignUpProfile = {
   role: "student" | "teacher";
 };
 
-// Shared authentication state for the entire app.
-let globalSession: Session | null = null;
-let globalUser: User | null = null;
-let globalLoading = true;
+// Shared authentication state
+let currentSession: Session | null = null;
+let isInitializing = true;
+let initialized = false;
 
-const listeners = new Set<() => void>();
+const subscribers = new Set<() => void>();
 
-let authInitialized = false;
+// Notify all components when authentication changes
+function notifySubscribers() {
+  console.log("AUTH DEBUG: notifying subscribers");
 
-// Notify every component using useAuth().
-function notify() {
-  listeners.forEach((listener) => listener());
+  subscribers.forEach((callback) => {
+    callback();
+  });
 }
 
-// Update the shared authentication state.
+// Update the authentication session
+function updateSession(session: Session | null) {
+  console.log(
+    "AUTH DEBUG: session updated",
+    session ? "SIGNED IN" : "SIGNED OUT",
+  );
+
+  currentSession = session;
+  isInitializing = false;
+
+  notifySubscribers();
+}
+
 export function setAuth(session: Session | null) {
-  globalSession = session;
-  globalUser = session?.user ?? null;
-  globalLoading = false;
-
-  notify();
+  updateSession(session);
 }
 
-// Initialize the Supabase authentication listener once.
+// Initialize Supabase authentication once
 function initializeAuth() {
-  if (authInitialized) {
+  console.log("AUTH DEBUG: initializeAuth called");
+
+  if (initialized) {
+    console.log("AUTH DEBUG: already initialized");
     return;
   }
 
-  authInitialized = true;
-  globalLoading = true;
+  initialized = true;
 
-  supabase.auth.onAuthStateChange((_event, session) => {
-    setAuth(session);
+  console.log("AUTH DEBUG: registering auth listener");
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    console.log("AUTH DEBUG: auth event", event);
+    updateSession(session);
   });
 
-  // Resolve the stored session explicitly. Waiting only for the INITIAL_SESSION
-  // event can leave the app stuck on the loading screen when the event never
-  // fires (PKCE + SecureStore on some devices/launches).
-  supabase.auth
-    .getSession()
-    .then(({ data }) => {
-      setAuth(data.session);
-    })
-    .catch((error) => {
-      console.error('Failed to load the stored session:', error);
-      setAuth(null);
-    });
+  console.log("AUTH DEBUG: starting getSession");
 
-  // Fail open: if nothing has resolved after a few seconds, continue signed
-  // out instead of showing the loading screen forever.
-  setTimeout(() => {
-    if (globalLoading) {
-      console.warn('Auth did not resolve in time; continuing signed out.');
-      setAuth(null);
+  // Always finish the initial loading state,
+  // even if getSession takes too long.
+  void (async () => {
+    try {
+      const result = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), 5000);
+        }),
+      ]);
+
+      if (result === null) {
+        console.warn("AUTH DEBUG: getSession timed out");
+
+        if (isInitializing) {
+          updateSession(null);
+        }
+
+        return;
+      }
+
+      if (result.error) {
+        console.error("AUTH DEBUG: session error", result.error.message);
+      }
+
+      console.log("AUTH DEBUG: getSession completed");
+
+      if (isInitializing) {
+        updateSession(result.data.session ?? null);
+      }
+    } catch (error) {
+      console.error("AUTH DEBUG: initialization failed", error);
+
+      if (isInitializing) {
+        updateSession(null);
+      }
     }
-  }, 5000);
+  })();
 }
 
-// Access authentication state from any component.
+// Hook used throughout the application
 export function useAuth(): AuthState {
-  const [, forceRender] = useState(0);
+  const [, refresh] = useState(0);
 
   useEffect(() => {
-    const listener = () => {
-      forceRender((value) => value + 1);
+    console.log("AUTH DEBUG: useAuth mounted");
+
+    const subscriber = () => {
+      console.log("AUTH DEBUG: component refreshing");
+
+      refresh((value) => value + 1);
     };
 
-    // Subscribe before initializing authentication.
-    listeners.add(listener);
+    subscribers.add(subscriber);
 
     initializeAuth();
 
     return () => {
-      listeners.delete(listener);
+      console.log("AUTH DEBUG: useAuth unmounted");
+      subscribers.delete(subscriber);
     };
   }, []);
 
   return {
-    session: globalSession,
-    user: globalUser,
-    loading: globalLoading,
+    session: currentSession,
+    user: currentSession?.user ?? null,
+    loading: isInitializing,
   };
 }
 
-// Register a new student or teacher.
+// Register a user
 export async function signUp(
   email: string,
   password: string,
@@ -115,8 +152,6 @@ export async function signUp(
     return { data, error };
   }
 
-  // The database trigger should create the profile row.
-  // Update the name and role when a session is available.
   if (data.session && profile) {
     const { error: profileError } = await supabase
       .from("profiles")
@@ -128,10 +163,7 @@ export async function signUp(
       .eq("id", data.session.user.id);
 
     if (profileError) {
-      console.error(
-        "Failed to update the new user's profile:",
-        profileError.message,
-      );
+      console.error("Profile update failed:", profileError.message);
     }
   }
 
@@ -142,32 +174,27 @@ export async function signUp(
   return { data, error: null };
 }
 
-// Sign in with email and password.
+// Sign in with email and password
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({
     email: email.trim(),
     password,
   });
 
-  if (error) {
-    return { data, error };
-  }
-
-  if (data.session) {
+  if (!error && data.session) {
     setAuth(data.session);
   }
 
-  return { data, error: null };
+  return { data, error };
 }
 
-// Sign out from Supabase.
+// Sign out
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
 
   if (error) {
     console.error("Sign-out failed:", error.message);
 
-    // Keep the current session if Supabase reports an error.
     return { error };
   }
 

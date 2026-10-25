@@ -85,7 +85,7 @@ export default function AdminReportsScreen() {
       setEvents((eventsResult.data ?? []) as EventItem[]);
       setAttendance((attendanceResult.data ?? []) as AttendanceItem[]);
     } catch (error: any) {
-      console.error("Failed to load administrator reports:", error);
+      console.error("Failed to load opeistrator reports:", error);
 
       setErrorMessage(
         error?.message ||

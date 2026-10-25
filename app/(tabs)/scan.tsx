@@ -1,53 +1,136 @@
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { useCallback, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
 
-import AppButton from '@/components/AppButton';
-import { COLORS } from '@/constants/colors';
-import { registerAttendance, syncPendingAttendance } from '@/lib/database';
-import { useAuth } from '@/lib/auth';
+import AppButton from "@/components/AppButton";
+import { COLORS } from "@/constants/colors";
+import { registerAttendance, syncPendingAttendance } from "@/lib/database";
+import { useAuth } from "@/lib/auth";
+
+type ScanStatus = "success" | "error" | "pending" | "loading";
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
+
   const [scanned, setScanned] = useState(false);
-  const [lastData, setLastData] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [message, setMessage] = useState("");
+  const [title, setTitle] = useState("");
+  const [status, setStatus] = useState<ScanStatus>("loading");
+
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Push any scans recorded while offline up to the cloud.
+  // Sync offline attendance when this screen opens.
   useFocusEffect(
     useCallback(() => {
       if (!user) return;
 
       syncPendingAttendance()
-        .then((synced) => {
-          if (synced > 0) {
-            setMessage(
-              `Synced ${synced} offline scan${synced === 1 ? '' : 's'} to the cloud.`
-            );
-            setSuccess(true);
+        .then((count) => {
+          if (count > 0) {
+            console.log(`${count} attendance record(s) synced.`);
           }
         })
-        .catch(() => {
-          // Still offline; the records stay queued for the next attempt.
+        .catch((error) => {
+          console.log("Offline sync unavailable:", error);
         });
-    }, [user])
+    }, [user]),
   );
 
+  const getResultTitle = (text: string) => {
+    const result = text.toLowerCase();
+
+    if (result.includes("saved offline")) {
+      return "Pending Sync";
+    }
+
+    if (result.includes("already registered")) {
+      return "Already Scanned";
+    }
+
+    if (result.includes("not started")) {
+      return "Event Not Started";
+    }
+
+    if (result.includes("already ended")) {
+      return "Event Ended";
+    }
+
+    if (result.includes("invalid") || result.includes("unknown event")) {
+      return "Invalid QR Code";
+    }
+
+    if (result.includes("attendance recorded")) {
+      return "Attendance Recorded!";
+    }
+
+    return "Scan Result";
+  };
+
+  const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    if (scanned) return;
+
+    setScanned(true);
+
+    if (loading || !user) {
+      setTitle("Sign In Required");
+      setMessage("Please sign in before scanning an event QR code.");
+      setStatus("error");
+      return;
+    }
+
+    setTitle("Processing QR Code");
+    setMessage("Please wait while we check your attendance.");
+    setStatus("loading");
+
+    try {
+      const result = await registerAttendance(data, user.id);
+
+      setTitle(getResultTitle(result.message));
+      setMessage(result.message);
+
+      if (result.message.toLowerCase().includes("saved offline")) {
+        setStatus("pending");
+      } else {
+        setStatus(result.success ? "success" : "error");
+      }
+    } catch (error) {
+      console.error("QR scan error:", error);
+
+      setTitle("Scan Failed");
+      setMessage(
+        "Something went wrong while processing the QR code. Please try again.",
+      );
+      setStatus("error");
+    }
+  };
+
+  const resetScanner = () => {
+    setScanned(false);
+    setMessage("");
+    setTitle("");
+    setStatus("loading");
+  };
+
   if (!permission) {
-    return <View style={styles.container} />;
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.subtitle}>Preparing camera...</Text>
+      </View>
+    );
   }
 
   if (!permission.granted) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>Camera Permission Needed</Text>
+
         <Text style={styles.subtitle}>
-          We need access to your camera to scan QR codes.
+          Allow camera access to scan school event QR codes.
         </Text>
+
         <AppButton
           theme="primary"
           title="Grant Permission"
@@ -58,74 +141,68 @@ export default function ScanScreen() {
     );
   }
 
-  const handleBarcodeScanned = ({ data }: { data: string }) => {
-    setScanned(true);
-    setLastData(data);
-
-    if (loading) {
-      setMessage('Checking your account...');
-      setSuccess(false);
-      return;
-    }
-
-    if (!user) {
-      setMessage('No account signed in. Sign in to record attendance.');
-      setSuccess(false);
-      return;
-    }
-
-    setMessage('Recording attendance...');
-    setSuccess(false);
-
-    registerAttendance(data, user.id).then((result) => {
-      setMessage(result.message);
-      setSuccess(result.success);
-    });
-  };
-
   return (
     <View style={styles.container}>
       <CameraView
         style={styles.camera}
         facing="back"
-        barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+        barcodeScannerSettings={{
+          barcodeTypes: ["qr"],
+        }}
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
       />
 
       <View style={styles.overlay}>
-        <Text style={styles.overlayText}>
-          {scanned ? 'QR Code detected!' : 'Point your camera at a QR code'}
-        </Text>
+        {!scanned ? (
+          <>
+            <Text style={styles.title}>Scan Event QR Code</Text>
 
-        {scanned && message && (
-          <Text style={[styles.scanResult, success ? styles.success : styles.error]}>
-            {message}
-          </Text>
-        )}
+            <Text style={styles.subtitle}>
+              Point your camera at the QR code provided by your teacher.
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text
+              style={[
+                styles.resultTitle,
+                status === "success" && styles.success,
+                status === "error" && styles.error,
+                status === "pending" && styles.pending,
+              ]}
+            >
+              {title}
+            </Text>
 
-        {scanned && lastData && (
-          <Text style={styles.scanData}>{lastData}</Text>
-        )}
+            {status === "loading" && (
+              <ActivityIndicator
+                size="large"
+                color={COLORS.primary}
+                style={styles.loader}
+              />
+            )}
 
-        {scanned && (
-          <AppButton
-            theme="primary"
-            title="Scan Again"
-            icon="refresh"
-            onPress={() => {
-              setScanned(false);
-              setLastData(null);
-              setMessage(null);
-            }}
-          />
+            <Text style={styles.resultMessage}>{message}</Text>
+
+            {status !== "loading" && (
+              <AppButton
+                theme="primary"
+                title="Scan Again"
+                icon="refresh"
+                onPress={resetScanner}
+              />
+            )}
+          </>
         )}
 
         {!user && !loading && (
-          <AppButton
-            title="Sign In"
-            icon="log-in-outline"
-            onPress={() => router.push('/login')}
-          />
+          <View style={styles.signInSection}>
+            <AppButton
+              title="Sign In"
+              icon="log-in-outline"
+              onPress={() => router.push("/login")}
+            />
+          </View>
         )}
       </View>
     </View>
@@ -136,55 +213,78 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 24,
   },
+
   camera: {
     ...StyleSheet.absoluteFillObject,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 16,
-  },
+
   overlay: {
-    position: 'absolute',
+    position: "absolute",
     left: 20,
     right: 20,
     bottom: 60,
     backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
+    borderRadius: 18,
+    padding: 22,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  overlayText: {
-    fontSize: 16,
-    fontWeight: '600',
+
+  title: {
+    fontSize: 20,
+    fontWeight: "700",
     color: COLORS.textPrimary,
-    marginBottom: 6,
-    textAlign: 'center',
+    textAlign: "center",
+    marginBottom: 10,
   },
-  scanResult: {
+
+  subtitle: {
     fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 8,
-    fontWeight: '600',
-  },
-  success: { color: '#2E7D32' }, // green — attendance recorded
-  error: { color: '#C62828' }, // red — failed / duplicate
-  scanData: {
-    fontSize: 12,
     color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: 12,
+    textAlign: "center",
+    lineHeight: 21,
+    marginTop: 8,
+  },
+
+  resultTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 10,
+    color: COLORS.primary,
+  },
+
+  resultMessage: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: "center",
+    lineHeight: 21,
+    marginBottom: 18,
+  },
+
+  loader: {
+    marginVertical: 12,
+  },
+
+  success: {
+    color: "#2E7D32",
+  },
+
+  error: {
+    color: "#C62828",
+  },
+
+  pending: {
+    color: "#B7791F",
+  },
+
+  signInSection: {
+    marginTop: 14,
+    width: "100%",
   },
 });

@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
+
 import { COLORS } from "@/constants/colors";
 
 export default function TabLayout() {
@@ -7,12 +8,37 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: COLORS.primary,
-        headerStyle: { backgroundColor: COLORS.background },
+        tabBarInactiveTintColor: COLORS.textSecondary,
+
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+          marginTop: 2,
+        },
+
+        tabBarItemStyle: {
+          paddingTop: 4,
+        },
+
+        headerStyle: {
+          backgroundColor: COLORS.background,
+        },
+
         headerShadowVisible: false,
         headerTintColor: COLORS.textPrimary,
+
+        headerTitleStyle: {
+          fontSize: 19,
+          fontWeight: "700",
+        },
+
         tabBarStyle: {
           backgroundColor: COLORS.card,
           borderTopColor: COLORS.border,
+          borderTopWidth: 1,
+          height: 62,
+          paddingTop: 6,
+          paddingBottom: 7,
         },
       }}
     >
@@ -22,13 +48,14 @@ export default function TabLayout() {
           title: "Home",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "home-sharp" : "home-outline"}
+              name={focused ? "home" : "home-outline"}
               color={color}
-              size={24}
+              size={22}
             />
           ),
         }}
       />
+
       <Tabs.Screen
         name="scan"
         options={{
@@ -37,11 +64,12 @@ export default function TabLayout() {
             <Ionicons
               name={focused ? "qr-code" : "qr-code-outline"}
               color={color}
-              size={24}
+              size={22}
             />
           ),
         }}
       />
+
       <Tabs.Screen
         name="history"
         options={{
@@ -50,11 +78,12 @@ export default function TabLayout() {
             <Ionicons
               name={focused ? "time" : "time-outline"}
               color={color}
-              size={24}
+              size={22}
             />
           ),
         }}
       />
+
       <Tabs.Screen
         name="profile"
         options={{
@@ -63,20 +92,21 @@ export default function TabLayout() {
             <Ionicons
               name={focused ? "person" : "person-outline"}
               color={color}
-              size={24}
+              size={22}
             />
           ),
         }}
       />
+
       <Tabs.Screen
         name="teacher"
         options={{
           title: "Teacher",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "clipboard" : "clipboard-outline"}
+              name={focused ? "calendar" : "calendar-outline"}
               color={color}
-              size={24}
+              size={22}
             />
           ),
         }}

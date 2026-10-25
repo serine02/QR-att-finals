@@ -1,14 +1,15 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from "expo-sqlite";
 
-import { recordCloudAttendance } from './attendance';
-import { lookupEventByCode } from './events';
-import { parseQRPayload } from './qr';
+import { recordCloudAttendance } from "./attendance";
+import { lookupEventByCode } from "./events";
+import { parseQRPayload } from "./qr";
 
 export type AttendanceRecord = {
   id: number;
   eventId: string;
   eventTitle: string;
   scannedAt: string;
+  synced: number;
 };
 
 export type RegisterResult = {
@@ -21,7 +22,7 @@ let db: SQLite.SQLiteDatabase | null = null;
 
 async function getDb() {
   if (!db) {
-    db = await SQLite.openDatabaseAsync('qr-attendance.db');
+    db = await SQLite.openDatabaseAsync("qr-attendance.db");
     await db.execAsync(`
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS events (
@@ -42,11 +43,11 @@ async function getDb() {
 
     // Migrate databases created before the sync queue existed.
     const columns = await db.getAllAsync<{ name: string }>(
-      'PRAGMA table_info(attendance)'
+      "PRAGMA table_info(attendance)",
     );
-    if (!columns.some((column) => column.name === 'synced')) {
+    if (!columns.some((column) => column.name === "synced")) {
       await db.execAsync(
-        'ALTER TABLE attendance ADD COLUMN synced INTEGER NOT NULL DEFAULT 0'
+        "ALTER TABLE attendance ADD COLUMN synced INTEGER NOT NULL DEFAULT 0",
       );
     }
   }
@@ -57,7 +58,7 @@ async function getDb() {
 // device is offline. They must not be swallowed by the offline queue.
 function isSetupError(message: string) {
   return /constraint|conflict|row-level security|policy|permission denied/i.test(
-    message
+    message,
   );
 }
 
@@ -68,24 +69,24 @@ async function saveLocalAttendance(
   start: string,
   end: string,
   scannedAt: string,
-  synced: boolean
+  synced: boolean,
 ) {
   const database = await getDb();
 
   await database.runAsync(
-    'INSERT OR IGNORE INTO events (eventId, title, start, end) VALUES (?, ?, ?, ?)',
+    "INSERT OR IGNORE INTO events (eventId, title, start, end) VALUES (?, ?, ?, ?)",
     eventId,
     title,
     start,
-    end
+    end,
   );
 
   await database.runAsync(
-    'INSERT OR IGNORE INTO attendance (studentId, eventId, scannedAt, synced) VALUES (?, ?, ?, ?)',
+    "INSERT OR IGNORE INTO attendance (studentId, eventId, scannedAt, synced) VALUES (?, ?, ?, ?)",
     studentId,
     eventId,
     scannedAt,
-    synced ? 1 : 0
+    synced ? 1 : 0,
   );
 }
 
@@ -94,7 +95,7 @@ async function saveLocalAttendance(
 // device has no connection.
 export async function registerAttendance(
   rawPayload: string,
-  studentId: string
+  studentId: string,
 ): Promise<RegisterResult> {
   const parsed = parseQRPayload(rawPayload);
   if (!parsed.ok) {
@@ -107,14 +108,14 @@ export async function registerAttendance(
 
   // Fast local duplicate check for immediate feedback.
   const existing = await database.getFirstAsync<{ id: number }>(
-    'SELECT id FROM attendance WHERE studentId = ? AND eventId = ?',
+    "SELECT id FROM attendance WHERE studentId = ? AND eventId = ?",
     studentId,
-    payload.event
+    payload.event,
   );
   if (existing) {
     return {
       success: false,
-      message: 'Already registered for this event.',
+      message: "Already registered for this event.",
       eventTitle: payload.title ?? payload.event,
     };
   }
@@ -129,7 +130,7 @@ export async function registerAttendance(
     if (!validateWindow(payload.start, payload.end)) {
       return {
         success: false,
-        message: 'Event has not started yet or has already ended.',
+        message: "Event has not started yet or has already ended.",
         eventTitle: payload.title ?? payload.event,
       };
     }
@@ -138,15 +139,15 @@ export async function registerAttendance(
       studentId,
       payload.event,
       payload.title ?? payload.event,
-      payload.start ?? '',
-      payload.end ?? '',
+      payload.start ?? "",
+      payload.end ?? "",
       now,
-      false
+      false,
     );
 
     return {
       success: true,
-      message: 'Saved offline. It will sync when you are back online.',
+      message: "Saved offline. It will sync when you are back online.",
       eventTitle: payload.title ?? payload.event,
     };
   }
@@ -154,7 +155,8 @@ export async function registerAttendance(
   if (!event) {
     return {
       success: false,
-      message: 'Unknown event code. Ask the teacher to create the event in the app.',
+      message:
+        "Unknown event code. Ask the teacher to create the event in the app.",
     };
   }
 
@@ -166,7 +168,9 @@ export async function registerAttendance(
 
     return {
       success: false,
-      message: notStarted ? 'Event has not started yet.' : 'Event has already ended.',
+      message: notStarted
+        ? "Event has not started yet."
+        : "Event has already ended.",
       eventTitle: event.title,
     };
   }
@@ -175,11 +179,11 @@ export async function registerAttendance(
 
   if (cloud.error) {
     if (isSetupError(cloud.error)) {
-      console.error('Attendance save rejected by Supabase:', cloud.error);
+      console.error("Attendance save rejected by Supabase:", cloud.error);
       return {
         success: false,
         message:
-          'The server refused to save attendance. Ask the admin to run the attendance database migration.',
+          "The server refused to save attendance. Ask the admin to run the attendance database migration.",
       };
     }
 
@@ -188,15 +192,15 @@ export async function registerAttendance(
       studentId,
       payload.event,
       event.title,
-      event.start_time ?? '',
-      event.end_time ?? '',
+      event.start_time ?? "",
+      event.end_time ?? "",
       now,
-      false
+      false,
     );
 
     return {
       success: true,
-      message: 'Saved offline. It will sync when you are back online.',
+      message: "Saved offline. It will sync when you are back online.",
       eventTitle: event.title,
     };
   }
@@ -206,24 +210,31 @@ export async function registerAttendance(
     studentId,
     payload.event,
     event.title,
-    event.start_time ?? '',
-    event.end_time ?? '',
+    event.start_time ?? "",
+    event.end_time ?? "",
     now,
-    true
+    true,
   );
 
   if (cloud.duplicate) {
     return {
       success: false,
-      message: 'Already registered for this event.',
+      message: "Already registered for this event.",
       eventTitle: event.title,
     };
   }
 
-  return { success: true, message: 'Attendance recorded!', eventTitle: event.title };
+  return {
+    success: true,
+    message: "Attendance recorded!",
+    eventTitle: event.title,
+  };
 }
 
-function validateWindow(start: string | null | undefined, end: string | null | undefined) {
+function validateWindow(
+  start: string | null | undefined,
+  end: string | null | undefined,
+) {
   const now = Date.now();
   const startTime = start ? new Date(start).getTime() : null;
   const endTime = end ? new Date(end).getTime() : null;
@@ -243,7 +254,7 @@ export async function syncPendingAttendance(): Promise<number> {
     eventId: string;
     scannedAt: string;
   }>(
-    'SELECT studentId, eventId, scannedAt FROM attendance WHERE synced = 0 ORDER BY scannedAt ASC LIMIT 100'
+    "SELECT studentId, eventId, scannedAt FROM attendance WHERE synced = 0 ORDER BY scannedAt ASC LIMIT 100",
   );
 
   if (pending.length === 0) {
@@ -260,20 +271,24 @@ export async function syncPendingAttendance(): Promise<number> {
       continue;
     }
 
-    const result = await recordCloudAttendance(event.id, row.studentId, row.scannedAt);
+    const result = await recordCloudAttendance(
+      event.id,
+      row.studentId,
+      row.scannedAt,
+    );
 
     if (result.error) {
       if (isSetupError(result.error)) {
-        console.error('Sync rejected by Supabase:', result.error);
+        console.error("Sync rejected by Supabase:", result.error);
         break;
       }
       continue;
     }
 
     await database.runAsync(
-      'UPDATE attendance SET synced = 1 WHERE studentId = ? AND eventId = ?',
+      "UPDATE attendance SET synced = 1 WHERE studentId = ? AND eventId = ?",
       row.studentId,
-      row.eventId
+      row.eventId,
     );
     synced += 1;
   }
@@ -282,16 +297,23 @@ export async function syncPendingAttendance(): Promise<number> {
 }
 
 export async function getAttendanceHistory(
-  studentId: string
+  studentId: string,
 ): Promise<AttendanceRecord[]> {
   const database = await getDb();
   const rows = await database.getAllAsync<AttendanceRecord>(
-    `SELECT a.id, a.eventId, e.title AS eventTitle, a.scannedAt
-     FROM attendance a
-     JOIN events e ON e.eventId = a.eventId
-     WHERE a.studentId = ?
-     ORDER BY a.scannedAt DESC`,
-    studentId
+    `
+SELECT
+  a.id,
+  a.eventId,
+  e.title AS eventTitle,
+  a.scannedAt,
+  a.synced
+FROM attendance a
+JOIN events e ON e.eventId = a.eventId
+WHERE a.studentId = ?
+ORDER BY a.scannedAt DESC
+`,
+    studentId,
   );
   return rows;
 }
