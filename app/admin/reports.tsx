@@ -11,7 +11,12 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+
+import EmptyState from "@/components/EmptyState";
 import { supabase } from "@/lib/supabase";
+import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 
 type Profile = {
   id: string;
@@ -85,7 +90,7 @@ export default function AdminReportsScreen() {
       setEvents((eventsResult.data ?? []) as EventItem[]);
       setAttendance((attendanceResult.data ?? []) as AttendanceItem[]);
     } catch (error: any) {
-      console.error("Failed to load opeistrator reports:", error);
+      console.error("Failed to load administrator reports:", error);
 
       setErrorMessage(
         error?.message ||
@@ -209,7 +214,7 @@ export default function AdminReportsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#246B67" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Loading reports...</Text>
       </View>
     );
@@ -217,25 +222,39 @@ export default function AdminReportsScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.topBar}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => router.replace("/admin")}
+          accessibilityRole="button"
+          accessibilityLabel="Back to administrator dashboard"
+        >
+          <Ionicons name="arrow-back" size={23} color={COLORS.textPrimary} />
+        </Pressable>
+
+        <View style={styles.topBarText}>
+          <Text style={styles.topBarTitle}>System Reports</Text>
+          <Text style={styles.topBarSubtitle}>Review attendance statistics</Text>
+        </View>
+
+        <View style={styles.adminIcon}>
+          <Ionicons name="bar-chart-outline" size={20} color={COLORS.primary} />
+        </View>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={applyRefresh}
-            tintColor="#246B67"
+            tintColor={COLORS.primary}
           />
         }
       >
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.replace("/admin")}
-        >
-          <Text style={styles.backButtonText}>
-            {"<  Administrator Dashboard"}
-          </Text>
-        </Pressable>
-
         <View style={styles.header}>
           <Text style={styles.eyebrow}>ADMINISTRATION</Text>
           <Text style={styles.title}>System Reports</Text>
@@ -249,7 +268,13 @@ export default function AdminReportsScreen() {
             <Text style={styles.errorTitle}>Unable to load all reports</Text>
             <Text style={styles.errorText}>{errorMessage}</Text>
 
-            <Pressable style={styles.retryButton} onPress={() => loadReports()}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.retryButton,
+                pressed && styles.pressed,
+              ]}
+              onPress={() => loadReports()}
+            >
               <Text style={styles.retryButtonText}>Try Again</Text>
             </Pressable>
           </View>
@@ -311,7 +336,7 @@ export default function AdminReportsScreen() {
             value={startDate}
             onChangeText={setStartDate}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={COLORS.textSecondary}
             autoCapitalize="none"
             keyboardType="numbers-and-punctuation"
             maxLength={10}
@@ -323,18 +348,30 @@ export default function AdminReportsScreen() {
             value={endDate}
             onChangeText={setEndDate}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={COLORS.textSecondary}
             autoCapitalize="none"
             keyboardType="numbers-and-punctuation"
             maxLength={10}
           />
 
           <View style={styles.filterActions}>
-            <Pressable style={styles.primaryButton} onPress={validateFilters}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && styles.pressed,
+              ]}
+              onPress={validateFilters}
+            >
               <Text style={styles.primaryButtonText}>Check Date Range</Text>
             </Pressable>
 
-            <Pressable style={styles.secondaryButton} onPress={clearFilters}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                pressed && styles.pressed,
+              ]}
+              onPress={clearFilters}
+            >
               <Text style={styles.secondaryButtonText}>Clear</Text>
             </Pressable>
           </View>
@@ -351,12 +388,11 @@ export default function AdminReportsScreen() {
         <Text style={styles.sectionTitle}>Attendance by Event</Text>
 
         {events.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No events available</Text>
-            <Text style={styles.emptyText}>
-              Event summaries will appear here after events are created.
-            </Text>
-          </View>
+          <EmptyState
+            icon="calendar-clear-outline"
+            title="No events available"
+            message="Event summaries will appear here after events are created."
+          />
         ) : (
           events.map((event) => {
             const records = getEventAttendance(event.id);
@@ -444,13 +480,11 @@ export default function AdminReportsScreen() {
         <Text style={styles.sectionTitle}>Recent Attendance</Text>
 
         {filteredAttendance.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No attendance records</Text>
-            <Text style={styles.emptyText}>
-              Try changing the date range or check whether attendance has been
-              recorded.
-            </Text>
-          </View>
+          <EmptyState
+            icon="document-text-outline"
+            title="No attendance records"
+            message="Try changing the date range or check whether attendance has been recorded."
+          />
         ) : (
           filteredAttendance.slice(0, 10).map((record) => {
             const profile = profiles.find(
@@ -477,7 +511,13 @@ export default function AdminReportsScreen() {
           })
         )}
 
-        <Pressable style={styles.bottomButton} onPress={() => loadReports()}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.bottomButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => loadReports()}
+        >
           <Text style={styles.bottomButtonText}>Refresh Reports</Text>
         </Pressable>
 
@@ -492,7 +532,49 @@ export default function AdminReportsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F4F8F7",
+    backgroundColor: COLORS.background,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 15,
+    backgroundColor: COLORS.card,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  topBarText: {
+    flex: 1,
+  },
+  topBarTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  topBarSubtitle: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  adminIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
+    justifyContent: "center",
+    alignItems: "center",
   },
   scrollContent: {
     padding: 20,
@@ -500,53 +582,40 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#F4F8F7",
+    backgroundColor: COLORS.background,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
     marginTop: 12,
-    color: "#526563",
+    color: COLORS.textSecondary,
     fontSize: 14,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "#E5F1EF",
-    marginBottom: 24,
-  },
-  backButtonText: {
-    color: "#246B67",
-    fontWeight: "700",
-    fontSize: 13,
   },
   header: {
     marginBottom: 24,
   },
   eyebrow: {
-    color: "#31817A",
+    color: COLORS.primary,
     fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 2,
-    marginBottom: 8,
+    fontWeight: "700",
+    letterSpacing: 1.3,
+    marginBottom: 7,
   },
   title: {
-    color: "#173D3A",
-    fontSize: 30,
+    color: COLORS.textPrimary,
+    fontSize: 26,
     fontWeight: "800",
   },
   subtitle: {
-    color: "#6B7D7A",
+    color: COLORS.textSecondary,
     fontSize: 14,
     lineHeight: 21,
     marginTop: 8,
   },
   sectionTitle: {
-    color: "#173D3A",
+    color: COLORS.textPrimary,
     fontSize: 19,
-    fontWeight: "800",
+    fontWeight: "700",
     marginTop: 12,
     marginBottom: 14,
   },
@@ -560,40 +629,50 @@ const styles = StyleSheet.create({
     width: "48%",
     flexGrow: 1,
     flexBasis: "44%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.large,
     padding: 17,
     borderWidth: 1,
-    borderColor: "#E2ECE9",
+    borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   statLabel: {
-    color: "#657975",
+    color: COLORS.textSecondary,
     fontSize: 12,
     fontWeight: "600",
   },
   statValue: {
-    color: "#246B67",
+    color: COLORS.primary,
     fontSize: 30,
     fontWeight: "800",
     marginTop: 10,
   },
   statHint: {
-    color: "#84938F",
+    color: COLORS.textSecondary,
     fontSize: 11,
     marginTop: 5,
   },
   roleCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.large,
     borderWidth: 1,
-    borderColor: "#E2ECE9",
+    borderColor: COLORS.border,
     padding: 18,
     marginBottom: 20,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   roleCardTitle: {
-    color: "#173D3A",
+    color: COLORS.textPrimary,
     fontSize: 16,
-    fontWeight: "800",
+    fontWeight: "700",
     marginBottom: 12,
   },
   roleRow: {
@@ -601,41 +680,47 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#EEF3F1",
+    borderBottomColor: COLORS.border,
   },
   roleLabel: {
-    color: "#657975",
+    color: COLORS.textSecondary,
     fontSize: 14,
   },
   roleValue: {
-    color: "#246B67",
-    fontWeight: "800",
+    color: COLORS.primary,
+    fontWeight: "700",
     fontSize: 14,
   },
   filterCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.card,
     padding: 18,
-    borderRadius: 18,
+    borderRadius: UI.radius.large,
     borderWidth: 1,
-    borderColor: "#E2ECE9",
+    borderColor: COLORS.border,
     marginBottom: 20,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   inputLabel: {
-    color: "#405955",
+    color: COLORS.textPrimary,
     fontSize: 13,
     fontWeight: "700",
     marginBottom: 8,
     marginTop: 8,
   },
   input: {
-    backgroundColor: "#F8FBFA",
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: "#DCE8E4",
-    borderRadius: 12,
+    borderColor: COLORS.border,
+    borderRadius: UI.radius.medium - 2,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    minHeight: 46,
     fontSize: 14,
-    color: "#173D3A",
+    color: COLORS.textPrimary,
   },
   filterActions: {
     flexDirection: "row",
@@ -644,49 +729,56 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     flex: 1,
-    backgroundColor: "#246B67",
+    backgroundColor: COLORS.primary,
+    minHeight: 46,
     paddingVertical: 13,
-    borderRadius: 12,
+    borderRadius: UI.radius.medium,
     alignItems: "center",
     justifyContent: "center",
   },
   primaryButtonText: {
     color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   secondaryButton: {
-    backgroundColor: "#E8F2F0",
+    backgroundColor: COLORS.surface,
     paddingHorizontal: 18,
     paddingVertical: 13,
-    borderRadius: 12,
+    minHeight: 46,
+    borderRadius: UI.radius.medium,
     alignItems: "center",
     justifyContent: "center",
   },
   secondaryButtonText: {
-    color: "#246B67",
+    color: COLORS.primary,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   filterHint: {
-    color: "#84938F",
+    color: COLORS.textSecondary,
     fontSize: 11,
     lineHeight: 16,
     marginTop: 12,
   },
   resultCount: {
-    color: "#246B67",
+    color: COLORS.primary,
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "700",
     marginTop: 10,
   },
   eventCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.large,
     borderWidth: 1,
-    borderColor: "#E2ECE9",
+    borderColor: COLORS.border,
     padding: 17,
     marginBottom: 14,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   eventHeader: {
     flexDirection: "row",
@@ -698,30 +790,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventTitle: {
-    color: "#173D3A",
+    color: COLORS.textPrimary,
     fontSize: 16,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   eventCode: {
-    color: "#84938F",
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginTop: 5,
   },
   attendanceBadge: {
-    backgroundColor: "#E6F3F0",
-    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: UI.radius.medium - 2,
     paddingHorizontal: 12,
     paddingVertical: 8,
     alignItems: "center",
     minWidth: 66,
   },
   attendanceBadgeValue: {
-    color: "#246B67",
+    color: COLORS.primary,
     fontSize: 18,
     fontWeight: "800",
   },
   attendanceBadgeLabel: {
-    color: "#467C76",
+    color: COLORS.textSecondary,
     fontSize: 10,
     marginTop: 2,
   },
@@ -730,28 +822,28 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   detailLabel: {
-    color: "#84938F",
+    color: COLORS.textSecondary,
     fontSize: 11,
     fontWeight: "700",
     marginTop: 4,
   },
   detailValue: {
-    color: "#526563",
+    color: COLORS.textPrimary,
     fontSize: 12,
   },
   eventDivider: {
     height: 1,
-    backgroundColor: "#EAF0EE",
+    backgroundColor: COLORS.border,
     marginVertical: 16,
   },
   attendanceListTitle: {
-    color: "#173D3A",
+    color: COLORS.textPrimary,
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "700",
     marginBottom: 10,
   },
   noRecordsText: {
-    color: "#84938F",
+    color: COLORS.textSecondary,
     fontSize: 12,
     lineHeight: 18,
   },
@@ -765,30 +857,30 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#E5F1EF",
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   recordAvatarText: {
-    color: "#246B67",
+    color: COLORS.primary,
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   recordInfo: {
     flex: 1,
   },
   recordName: {
-    color: "#284541",
+    color: COLORS.textPrimary,
     fontSize: 13,
     fontWeight: "700",
   },
   recordDate: {
-    color: "#84938F",
+    color: COLORS.textSecondary,
     fontSize: 11,
     marginTop: 4,
   },
   moreRecords: {
-    color: "#246B67",
+    color: COLORS.primary,
     fontSize: 12,
     fontWeight: "700",
     marginTop: 8,
@@ -796,70 +888,57 @@ const styles = StyleSheet.create({
   recentCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.medium,
     borderWidth: 1,
-    borderColor: "#E2ECE9",
+    borderColor: COLORS.border,
     padding: 14,
     marginBottom: 10,
     gap: 12,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   recentIndicator: {
     width: 4,
     alignSelf: "stretch",
     borderRadius: 4,
-    backgroundColor: "#4C9A8E",
+    backgroundColor: COLORS.primary,
   },
   recentInfo: {
     flex: 1,
   },
   recentEvent: {
-    color: "#526563",
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginTop: 4,
   },
-  emptyCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: "#E2ECE9",
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    color: "#284541",
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  emptyText: {
-    color: "#84938F",
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 7,
-  },
   errorCard: {
-    backgroundColor: "#FFF1F0",
-    borderColor: "#F4C7C3",
+    backgroundColor: COLORS.dangerSoft,
+    borderColor: COLORS.border,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: UI.radius.large,
     padding: 16,
     marginBottom: 20,
   },
   errorTitle: {
-    color: "#A83232",
+    color: COLORS.dangerText,
     fontSize: 15,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   errorText: {
-    color: "#8C4141",
+    color: COLORS.dangerText,
     fontSize: 12,
     lineHeight: 18,
     marginTop: 8,
+    opacity: 0.85,
   },
   retryButton: {
     alignSelf: "flex-start",
-    backgroundColor: "#A83232",
-    borderRadius: 10,
+    backgroundColor: COLORS.dangerText,
+    borderRadius: UI.radius.small,
     paddingHorizontal: 16,
     paddingVertical: 10,
     marginTop: 12,
@@ -867,22 +946,22 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   bottomButton: {
-    backgroundColor: "#246B67",
-    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    borderRadius: UI.radius.medium,
     padding: 15,
     alignItems: "center",
     marginTop: 16,
   },
   bottomButtonText: {
     color: "#FFFFFF",
-    fontWeight: "800",
+    fontWeight: "700",
     fontSize: 14,
   },
   footer: {
-    color: "#98A6A2",
+    color: COLORS.textSecondary,
     fontSize: 11,
     textAlign: "center",
     marginTop: 24,

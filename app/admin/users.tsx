@@ -15,6 +15,10 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+import Badge from "@/components/Badge";
+import EmptyState from "@/components/EmptyState";
+import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 import { useAuth, signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
@@ -27,25 +31,20 @@ type UserProfile = {
   role: UserRole;
 };
 
-const C = {
-  primary: "#617A46",
-  background: "#F5F6EB",
-  card: "#FFFFFF",
-  surface: "#D9E3C4",
-  border: "#E1E7D4",
-  text: "#52683B",
-  secondary: "#77816D",
-  danger: "#B54747",
-  teacherBadge: "#DCECE1",
-  adminBadge: "#E6EAD8",
-};
-
 // The database stores "admin"; only the display label says "Administrator".
 // Older versions wrote "administrator", which the login screen rejected.
 const ROLES: UserRole[] = ["student", "teacher", "admin"];
 
 function roleLabel(role: UserRole) {
-  return role === "admin" ? "Administrator" : role.charAt(0).toUpperCase() + role.slice(1);
+  return role === "admin"
+    ? "Administrator"
+    : role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function roleTone(role: UserRole): "info" | "unscheduled" | "confirmed" {
+  if (role === "admin") return "info";
+  if (role === "teacher") return "unscheduled";
+  return "confirmed";
 }
 
 export default function AdminUsersScreen() {
@@ -164,10 +163,30 @@ export default function AdminUsersScreen() {
       );
 
       if (error) {
-        console.error("Create teacher function error:", error.message);
-        throw new Error(
-          "Could not create the teacher account. Confirm that the Edge Function is deployed, then check its logs.",
-        );
+        // Supabase FunctionsHttpError exposes the failed HTTP response.
+        // Show its status and server message without exposing credentials.
+        let details = error.message;
+        const response = (error as typeof error & { context?: Response })
+          .context;
+
+        if (response && typeof response.status === "number") {
+          details += `\nHTTP Status: ${response.status}`;
+          try {
+            const body: unknown = await response.clone().json();
+            if (body && typeof body === "object") {
+              const payload = body as Record<string, unknown>;
+              const serverMessage = payload.error ?? payload.message;
+              if (typeof serverMessage === "string") {
+                details += `\nServer Error: ${serverMessage}`;
+              }
+            }
+          } catch {
+            // Not all function errors have JSON responses.
+          }
+        }
+
+        console.error("Create teacher function error:", details);
+        throw new Error(details);
       }
 
       if (data?.error) {
@@ -285,7 +304,7 @@ export default function AdminUsersScreen() {
   if (authLoading || pageLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={C.primary} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Loading users...</Text>
       </View>
     );
@@ -305,7 +324,7 @@ export default function AdminUsersScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => void onRefresh()}
-            tintColor={C.primary}
+            tintColor={COLORS.primary}
           />
         }
         ListHeaderComponent={
@@ -321,17 +340,28 @@ export default function AdminUsersScreen() {
 
               <Pressable
                 onPress={handleSignOut}
-                style={styles.iconButton}
+                style={({ pressed }) => [
+                  styles.iconButton,
+                  pressed && styles.pressed,
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel="Sign out"
               >
-                <Ionicons name="log-out-outline" size={22} color={C.primary} />
+                <Ionicons
+                  name="log-out-outline"
+                  size={22}
+                  color={COLORS.dangerText}
+                />
               </Pressable>
             </View>
 
             <View style={styles.summaryCard}>
               <View style={styles.summaryIcon}>
-                <Ionicons name="people-outline" size={26} color={C.primary} />
+                <Ionicons
+                  name="people-outline"
+                  size={26}
+                  color={COLORS.primary}
+                />
               </View>
               <View>
                 <Text style={styles.summaryNumber}>{users.length}</Text>
@@ -340,7 +370,10 @@ export default function AdminUsersScreen() {
             </View>
 
             <Pressable
-              style={styles.addButton}
+              style={({ pressed }) => [
+                styles.addButton,
+                pressed && styles.pressed,
+              ]}
               onPress={() => setShowForm((current) => !current)}
               accessibilityRole="button"
             >
@@ -367,7 +400,7 @@ export default function AdminUsersScreen() {
                   value={fullName}
                   onChangeText={setFullName}
                   placeholder="Enter full name"
-                  placeholderTextColor="#909989"
+                  placeholderTextColor={COLORS.textSecondary}
                   autoCapitalize="words"
                   editable={!creating}
                 />
@@ -378,7 +411,7 @@ export default function AdminUsersScreen() {
                   value={email}
                   onChangeText={setEmail}
                   placeholder="teacher@example.com"
-                  placeholderTextColor="#909989"
+                  placeholderTextColor={COLORS.textSecondary}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -391,16 +424,17 @@ export default function AdminUsersScreen() {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="At least 8 characters"
-                  placeholderTextColor="#909989"
+                  placeholderTextColor={COLORS.textSecondary}
                   secureTextEntry
                   autoCapitalize="none"
                   editable={!creating}
                 />
 
                 <Pressable
-                  style={[
+                  style={({ pressed }) => [
                     styles.submitButton,
                     creating && styles.disabledButton,
+                    pressed && styles.pressed,
                   ]}
                   onPress={() => void handleCreateTeacher()}
                   disabled={creating}
@@ -427,18 +461,26 @@ export default function AdminUsersScreen() {
             <Text style={styles.sectionTitle}>All Users</Text>
 
             <View style={styles.searchBox}>
-              <Ionicons name="search-outline" size={20} color={C.secondary} />
+              <Ionicons
+                name="search-outline"
+                size={20}
+                color={COLORS.textSecondary}
+              />
               <TextInput
                 style={styles.searchInput}
                 value={search}
                 onChangeText={setSearch}
                 placeholder="Search name, email, or role"
-                placeholderTextColor="#909989"
+                placeholderTextColor={COLORS.textSecondary}
                 autoCapitalize="none"
               />
               {search.length > 0 && (
                 <Pressable onPress={() => setSearch("")}>
-                  <Ionicons name="close-circle" size={19} color={C.secondary} />
+                  <Ionicons
+                    name="close-circle"
+                    size={19}
+                    color={COLORS.textSecondary}
+                  />
                 </Pressable>
               )}
             </View>
@@ -460,19 +502,19 @@ export default function AdminUsersScreen() {
                 {item.email || "No email"}
               </Text>
 
-              <View
-                style={[
-                  styles.roleBadge,
-                  item.role === "admin" && styles.adminBadge,
-                  item.role === "teacher" && styles.teacherBadge,
-                ]}
-              >
-                <Text style={styles.roleText}>{roleLabel(item.role)}</Text>
+              <View style={styles.roleBadgeWrap}>
+                <Badge
+                  label={roleLabel(item.role)}
+                  tone={roleTone(item.role)}
+                />
               </View>
             </View>
 
             <Pressable
-              style={styles.roleButton}
+              style={({ pressed }) => [
+                styles.roleButton,
+                pressed && styles.pressed,
+              ]}
               onPress={() => handleChangeRole(item)}
               accessibilityRole="button"
               accessibilityLabel={`Change role for ${item.full_name || item.email || "user"}`}
@@ -480,19 +522,17 @@ export default function AdminUsersScreen() {
               <Ionicons
                 name="ellipsis-horizontal"
                 size={22}
-                color={C.primary}
+                color={COLORS.primary}
               />
             </Pressable>
           </View>
         )}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={36} color={C.secondary} />
-            <Text style={styles.emptyTitle}>No users found</Text>
-            <Text style={styles.emptySubtitle}>
-              Try another search or refresh the list.
-            </Text>
-          </View>
+          <EmptyState
+            icon="people-outline"
+            title="No users found"
+            message="Try another search or refresh the list."
+          />
         }
       />
     </KeyboardAvoidingView>
@@ -502,7 +542,7 @@ export default function AdminUsersScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: C.background,
+    backgroundColor: COLORS.background,
   },
   listContent: {
     padding: 20,
@@ -512,11 +552,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: C.background,
+    backgroundColor: COLORS.background,
   },
   loadingText: {
     marginTop: 12,
-    color: C.text,
+    color: COLORS.textPrimary,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   header: {
     flexDirection: "row",
@@ -529,29 +572,29 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   eyebrow: {
-    color: C.primary,
+    color: COLORS.primary,
     fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.5,
+    fontWeight: "700",
+    letterSpacing: 1.3,
     marginBottom: 5,
   },
   title: {
-    color: C.text,
-    fontSize: 28,
+    color: COLORS.textPrimary,
+    fontSize: 26,
     fontWeight: "800",
   },
   subtitle: {
-    color: C.secondary,
+    color: COLORS.textSecondary,
     fontSize: 13,
     marginTop: 5,
   },
   iconButton: {
     width: 44,
     height: 44,
-    borderRadius: 15,
-    backgroundColor: C.card,
+    borderRadius: UI.radius.medium,
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: COLORS.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -560,27 +603,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 14,
     padding: 18,
-    backgroundColor: C.card,
-    borderRadius: 22,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.large,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: COLORS.border,
     marginBottom: 14,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   summaryIcon: {
     width: 52,
     height: 52,
-    borderRadius: 17,
-    backgroundColor: C.surface,
+    borderRadius: UI.radius.medium,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   summaryNumber: {
-    color: C.text,
+    color: COLORS.textPrimary,
     fontSize: 25,
     fontWeight: "800",
   },
   summaryLabel: {
-    color: C.secondary,
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
@@ -589,9 +637,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 9,
-    backgroundColor: C.primary,
+    backgroundColor: COLORS.primary,
+    minHeight: 52,
     paddingVertical: 15,
-    borderRadius: 16,
+    borderRadius: UI.radius.large,
     marginBottom: 16,
   },
   addButtonText: {
@@ -600,39 +649,39 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   formCard: {
-    backgroundColor: C.card,
-    borderRadius: 22,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.large,
     padding: 18,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: COLORS.border,
     marginBottom: 24,
   },
   formTitle: {
-    color: C.text,
+    color: COLORS.textPrimary,
     fontSize: 19,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   formSubtitle: {
-    color: C.secondary,
+    color: COLORS.textSecondary,
     fontSize: 12,
     lineHeight: 18,
     marginTop: 5,
     marginBottom: 12,
   },
   label: {
-    color: C.text,
+    color: COLORS.textPrimary,
     fontSize: 13,
     fontWeight: "700",
     marginBottom: 7,
     marginTop: 12,
   },
   input: {
-    minHeight: 49,
+    minHeight: 48,
     borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 13,
-    backgroundColor: "#FCFDF8",
-    color: C.text,
+    borderColor: COLORS.border,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.card,
+    color: COLORS.textPrimary,
     paddingHorizontal: 13,
     fontSize: 14,
   },
@@ -642,8 +691,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 9,
-    borderRadius: 14,
-    backgroundColor: C.primary,
+    borderRadius: UI.radius.medium,
+    backgroundColor: COLORS.primary,
     marginTop: 22,
   },
   disabledButton: {
@@ -655,49 +704,54 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   sectionTitle: {
-    color: C.text,
+    color: COLORS.textPrimary,
     fontSize: 19,
-    fontWeight: "800",
+    fontWeight: "700",
     marginBottom: 12,
   },
   searchBox: {
-    minHeight: 49,
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
     gap: 9,
     paddingHorizontal: 13,
-    backgroundColor: C.card,
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 15,
+    borderColor: COLORS.border,
+    borderRadius: UI.radius.medium,
     marginBottom: 14,
   },
   searchInput: {
     flex: 1,
-    minHeight: 45,
-    color: C.text,
+    minHeight: 44,
+    color: COLORS.textPrimary,
     fontSize: 13,
   },
   userCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: C.card,
-    borderRadius: 18,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.large,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: COLORS.border,
     padding: 13,
     marginBottom: 10,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   avatar: {
     width: 45,
     height: 45,
-    borderRadius: 16,
-    backgroundColor: C.surface,
+    borderRadius: UI.radius.medium,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    color: C.primary,
+    color: COLORS.primary,
     fontSize: 19,
     fontWeight: "800",
   },
@@ -707,33 +761,18 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   userName: {
-    color: C.text,
+    color: COLORS.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   userEmail: {
-    color: C.secondary,
+    color: COLORS.textSecondary,
     fontSize: 11,
     marginTop: 4,
   },
-  roleBadge: {
+  roleBadgeWrap: {
     alignSelf: "flex-start",
-    backgroundColor: "#EDF0E7",
-    borderRadius: 8,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
     marginTop: 7,
-  },
-  adminBadge: {
-    backgroundColor: C.adminBadge,
-  },
-  teacherBadge: {
-    backgroundColor: C.teacherBadge,
-  },
-  roleText: {
-    color: C.text,
-    fontSize: 10,
-    fontWeight: "700",
   },
   roleButton: {
     width: 36,
@@ -741,21 +780,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 5,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 35,
-  },
-  emptyTitle: {
-    color: C.text,
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: 12,
-  },
-  emptySubtitle: {
-    color: C.secondary,
-    fontSize: 12,
-    textAlign: "center",
-    marginTop: 5,
   },
 });

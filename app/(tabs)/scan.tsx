@@ -2,13 +2,41 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 import AppButton from "@/components/AppButton";
 import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 import { registerAttendance, syncPendingAttendance } from "@/lib/database";
 import { useAuth } from "@/lib/auth";
 
 type ScanStatus = "success" | "error" | "pending" | "loading";
+
+const RESULT_ICONS: Record<
+  ScanStatus,
+  { icon: keyof typeof Ionicons.glyphMap; color: string; background: string }
+> = {
+  success: {
+    icon: "checkmark-circle",
+    color: COLORS.successText,
+    background: COLORS.successSoft,
+  },
+  error: {
+    icon: "alert-circle",
+    color: COLORS.dangerText,
+    background: COLORS.dangerSoft,
+  },
+  pending: {
+    icon: "cloud-upload-outline",
+    color: COLORS.warning,
+    background: COLORS.warningSoft,
+  },
+  loading: {
+    icon: "hourglass-outline",
+    color: COLORS.primary,
+    background: COLORS.surface,
+  },
+};
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -115,31 +143,39 @@ export default function ScanScreen() {
 
   if (!permission) {
     return (
-      <View style={styles.container}>
+      <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.subtitle}>Preparing camera...</Text>
+        <Text style={styles.centeredText}>Preparing camera...</Text>
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Camera Permission Needed</Text>
+      <View style={styles.centered}>
+        <View style={styles.permissionIcon}>
+          <Ionicons name="camera-outline" size={30} color={COLORS.primary} />
+        </View>
 
-        <Text style={styles.subtitle}>
+        <Text style={styles.centeredTitle}>Camera Permission Needed</Text>
+
+        <Text style={styles.centeredText}>
           Allow camera access to scan school event QR codes.
         </Text>
 
-        <AppButton
-          theme="primary"
-          title="Grant Permission"
-          icon="camera"
-          onPress={requestPermission}
-        />
+        <View style={styles.permissionAction}>
+          <AppButton
+            theme="primary"
+            title="Grant Permission"
+            icon="camera"
+            onPress={requestPermission}
+          />
+        </View>
       </View>
     );
   }
+
+  const resultVisual = RESULT_ICONS[status];
 
   return (
     <View style={styles.container}>
@@ -152,6 +188,12 @@ export default function ScanScreen() {
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
       />
 
+      {!scanned && (
+        <View style={styles.scanFrame} pointerEvents="none">
+          <View style={styles.scanFrameInner} />
+        </View>
+      )}
+
       <View style={styles.overlay}>
         {!scanned ? (
           <>
@@ -163,34 +205,43 @@ export default function ScanScreen() {
           </>
         ) : (
           <>
+            <View
+              style={[
+                styles.resultIcon,
+                { backgroundColor: resultVisual.background },
+              ]}
+            >
+              {status === "loading" ? (
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              ) : (
+                <Ionicons
+                  name={resultVisual.icon}
+                  size={26}
+                  color={resultVisual.color}
+                />
+              )}
+            </View>
+
             <Text
               style={[
                 styles.resultTitle,
-                status === "success" && styles.success,
-                status === "error" && styles.error,
-                status === "pending" && styles.pending,
+                { color: resultVisual.color },
               ]}
             >
               {title}
             </Text>
 
-            {status === "loading" && (
-              <ActivityIndicator
-                size="large"
-                color={COLORS.primary}
-                style={styles.loader}
-              />
-            )}
-
             <Text style={styles.resultMessage}>{message}</Text>
 
             {status !== "loading" && (
-              <AppButton
-                theme="primary"
-                title="Scan Again"
-                icon="refresh"
-                onPress={resetScanner}
-              />
+              <View style={styles.resultAction}>
+                <AppButton
+                  theme="primary"
+                  title="Scan Again"
+                  icon="refresh"
+                  onPress={resetScanner}
+                />
+              </View>
             )}
           </>
         )}
@@ -215,24 +266,85 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: UI.space.xl,
   },
 
   camera: {
     ...StyleSheet.absoluteFillObject,
   },
 
+  centered: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: UI.space.xl,
+  },
+
+  centeredTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+    textAlign: "center",
+    marginTop: UI.space.lg,
+    marginBottom: UI.space.sm,
+  },
+
+  centeredText: {
+    fontSize: UI.typography.body,
+    color: COLORS.textSecondary,
+    textAlign: "center",
+    lineHeight: 21,
+    marginTop: UI.space.sm,
+  },
+
+  permissionIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  permissionAction: {
+    alignSelf: "stretch",
+    marginTop: UI.space.lg,
+  },
+
+  scanFrame: {
+    position: "absolute",
+    top: "12%",
+    left: 40,
+    right: 40,
+    height: 240,
+  },
+
+  scanFrameInner: {
+    flex: 1,
+    borderRadius: UI.radius.large,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.85)",
+  },
+
   overlay: {
     position: "absolute",
-    left: 20,
-    right: 20,
+    left: UI.space.lg,
+    right: UI.space.lg,
     bottom: 60,
     backgroundColor: COLORS.card,
-    borderRadius: 18,
-    padding: 22,
+    borderRadius: UI.radius.large,
+    padding: 20,
     alignItems: "center",
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
 
   title: {
@@ -240,51 +352,47 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.textPrimary,
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: UI.space.sm,
   },
 
   subtitle: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     color: COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 21,
-    marginTop: 8,
+    marginTop: UI.space.xs,
+  },
+
+  resultIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: UI.space.md,
   },
 
   resultTitle: {
     fontSize: 20,
     fontWeight: "700",
     textAlign: "center",
-    marginBottom: 10,
-    color: COLORS.primary,
+    marginBottom: UI.space.xs,
   },
 
   resultMessage: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     color: COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 21,
-    marginBottom: 18,
+    marginBottom: UI.space.md,
   },
 
-  loader: {
-    marginVertical: 12,
-  },
-
-  success: {
-    color: "#2E7D32",
-  },
-
-  error: {
-    color: "#C62828",
-  },
-
-  pending: {
-    color: "#B7791F",
+  resultAction: {
+    alignSelf: "stretch",
   },
 
   signInSection: {
-    marginTop: 14,
+    marginTop: UI.space.md,
     width: "100%",
   },
 });

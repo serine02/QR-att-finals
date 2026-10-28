@@ -1,77 +1,78 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+  ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
   TouchableWithoutFeedback,
-  Keyboard,
-  Pressable,
-} from 'react-native';
-import { Link, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+  View,
+} from "react-native";
+import { Link, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import AppButton from '@/components/AppButton';
-import Header from '@/components/Header';
-import { COLORS } from '@/constants/colors';
-import { signUp } from '@/lib/auth';
+import AppButton from "@/components/AppButton";
+import Header from "@/components/Header";
+import { COLORS } from "@/constants/colors";
+import { signUp } from "@/lib/auth";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'student' | 'teacher'>('student');
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-
-
   const handleRegister = async () => {
+    if (loading) return;
+
     setError(null);
 
     if (!email.trim() || !fullName.trim() || !password || !confirmPassword) {
-      setError('All fields are required.');
+      setError("All fields are required.");
+      return;
+    }
+
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setError("Enter a valid email address.");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError("Passwords do not match.");
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+      setError("Password must be at least 6 characters.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const { data, error: authError } = await signUp(
-        email.trim(),
-        password,
-        { full_name: fullName.trim(), role }
-      );
+      const { data, error: authError } = await signUp(email.trim(), password, {
+        full_name: fullName.trim(),
+        role: "student",
+      });
 
       if (authError) {
         setError(authError.message);
       } else if (data.session) {
-        // Email confirmation is disabled, so go straight to app
-        router.replace('/(tabs)');
+        router.replace("/(tabs)");
       } else {
-        // Email confirmation is on — show "check your email"
         setSuccess(true);
       }
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -81,8 +82,8 @@ export default function RegisterScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
@@ -95,15 +96,20 @@ export default function RegisterScreen() {
             </View>
 
             <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Register to start recording attendance</Text>
+
+            <Text style={styles.subtitle}>
+              Register as a student to start recording attendance.
+            </Text>
 
             {success ? (
               <View style={styles.successContainer}>
                 <Text style={styles.successTitle}>Check your email!</Text>
+
                 <Text style={styles.successText}>
-                  We sent a confirmation link to {email}. Click the link to verify your
-                  account, then come back and sign in.
+                  We sent a confirmation link to {email}. Click the link to
+                  verify your account, then come back and sign in.
                 </Text>
+
                 <Link href="/login" style={styles.link}>
                   Back to Sign In
                 </Link>
@@ -111,16 +117,19 @@ export default function RegisterScreen() {
             ) : (
               <View style={styles.form}>
                 <Text style={styles.label}>Full Name</Text>
+
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your full name"
                   value={fullName}
                   onChangeText={setFullName}
                   placeholderTextColor={COLORS.textSecondary}
+                  autoCapitalize="words"
                   editable={!loading}
                 />
 
                 <Text style={styles.label}>Email</Text>
+
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your email"
@@ -129,10 +138,12 @@ export default function RegisterScreen() {
                   placeholderTextColor={COLORS.textSecondary}
                   autoCapitalize="none"
                   keyboardType="email-address"
+                  autoComplete="email"
                   editable={!loading}
                 />
 
                 <Text style={styles.label}>Password</Text>
+
                 <TextInput
                   style={styles.input}
                   value={password}
@@ -144,6 +155,7 @@ export default function RegisterScreen() {
                 />
 
                 <Text style={styles.label}>Confirm Password</Text>
+
                 <TextInput
                   style={styles.input}
                   value={confirmPassword}
@@ -154,36 +166,28 @@ export default function RegisterScreen() {
                   editable={!loading}
                 />
 
-                <Text style={styles.label}>I am a...</Text>
-                <View style={styles.roleRow}>
-                  <Pressable
-                    style={[styles.roleChip, role === 'student' && styles.roleChipActive]}
-                    onPress={() => setRole('student')}
-                    disabled={loading}
-                  >
-                    <Text style={[styles.roleChipText, role === 'student' && styles.roleChipTextActive]}>
-                      Student
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.roleChip, role === 'teacher' && styles.roleChipActive]}
-                    onPress={() => setRole('teacher')}
-                    disabled={loading}
-                  >
-                    <Text style={[styles.roleChipText, role === 'teacher' && styles.roleChipTextActive]}>
-                      Teacher
-                    </Text>
-                  </Pressable>
+                <View style={styles.studentInfo}>
+                  <Text style={styles.studentInfoTitle}>
+                    Account Type: Student
+                  </Text>
+
+                  <Text style={styles.studentInfoText}>
+                    Teacher accounts are created by the administrator.
+                  </Text>
                 </View>
 
                 {error && <Text style={styles.error}>{error}</Text>}
 
                 {loading ? (
-                  <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
+                  <ActivityIndicator
+                    size="large"
+                    color={COLORS.primary}
+                    style={styles.loader}
+                  />
                 ) : (
                   <AppButton
                     theme="primary"
-                    title="Sign Up"
+                    title="Create Student Account"
                     icon="person-add-outline"
                     onPress={handleRegister}
                   />
@@ -208,42 +212,51 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+
   keyboardView: {
     flex: 1,
   },
+
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 40,
   },
+
   headerContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 20,
     marginBottom: 16,
   },
+
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 4,
   },
+
   subtitle: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: 32,
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 21,
   },
+
   form: {
     marginBottom: 24,
   },
+
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.textPrimary,
     marginBottom: 6,
     marginTop: 14,
   },
+
   input: {
     backgroundColor: COLORS.card,
     borderRadius: 14,
@@ -254,66 +267,71 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.textPrimary,
   },
-  error: {
+
+  studentInfo: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 20,
+    marginBottom: 16,
+  },
+
+  studentInfoTitle: {
+    color: COLORS.textPrimary,
     fontSize: 14,
-    color: '#C62828',
-    textAlign: 'center',
-    marginTop: 12,
+    fontWeight: "700",
     marginBottom: 4,
   },
+
+  studentInfoText: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
+  error: {
+    fontSize: 14,
+    color: COLORS.danger,
+    textAlign: "center",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+
   loader: {
     marginVertical: 16,
   },
+
   link: {
     fontSize: 14,
     color: COLORS.primary,
-    textAlign: 'center',
-    fontWeight: '600',
+    textAlign: "center",
+    fontWeight: "600",
   },
+
   successContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 24,
     padding: 20,
     backgroundColor: COLORS.card,
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
+
   successTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.textPrimary,
     marginBottom: 8,
   },
+
   successText: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 16,
-  },
-  roleRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  roleChip: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderWidth: 2,
-    borderColor: '#495458',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  roleChipActive: {
-    borderColor: '#86641a',
-    backgroundColor: '#757566',
-  },
-  roleChipText: {
-    fontSize: 14,
-    color: '#9298b3',
-    fontWeight: '500',
-  },
-  roleChipTextActive: {
-    color: '#e1e9c3',
   },
 });

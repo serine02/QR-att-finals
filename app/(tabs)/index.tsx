@@ -5,6 +5,7 @@ import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import AppButton from "@/components/AppButton";
 import Header from "@/components/Header";
 import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 
 export default function Index() {
   const [now, setNow] = useState(new Date());
@@ -79,7 +80,9 @@ export default function Index() {
         </View>
 
         <View style={styles.tipCard}>
-          <Text style={styles.tipTitle}>Attendance Reminder</Text>
+          <View style={styles.tipIconRow}>
+            <Text style={styles.tipTitle}>Attendance Reminder</Text>
+          </View>
 
           <Text style={styles.tipText}>
             Make sure to scan the correct event QR code during the scheduled
@@ -99,83 +102,83 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingHorizontal: UI.space.xl,
+    paddingBottom: UI.space.xl + 16,
   },
 
   headerContainer: {
     alignItems: "center",
-    marginTop: 24,
-    marginBottom: 30,
+    marginTop: UI.space.lg,
+    marginBottom: UI.space.xl,
   },
 
   welcomeSection: {
-    marginBottom: 24,
+    marginBottom: UI.space.xl,
   },
 
   greeting: {
-    fontSize: 26,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     color: COLORS.textPrimary,
   },
 
   date: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     color: COLORS.textSecondary,
     marginTop: 6,
   },
 
   infoCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 18,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 28,
+    ...UI.card,
+    padding: UI.space.lg,
+    marginBottom: UI.space.xl,
   },
 
   cardTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: COLORS.primary,
-    marginBottom: 10,
+    marginBottom: UI.space.sm,
   },
 
   cardDescription: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     color: COLORS.textSecondary,
     lineHeight: 22,
   },
 
   actionSection: {
-    gap: 14,
-    marginBottom: 28,
+    gap: UI.space.md,
+    marginBottom: UI.space.xl,
   },
 
   sectionTitle: {
-    fontSize: 18,
+    fontSize: UI.typography.section,
     fontWeight: "700",
     color: COLORS.textPrimary,
     marginBottom: 4,
   },
 
   tipCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: COLORS.surface,
+    borderRadius: UI.radius.large,
+    padding: UI.space.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+
+  tipIconRow: {
+    marginBottom: UI.space.sm,
   },
 
   tipTitle: {
     fontSize: 15,
     fontWeight: "700",
     color: COLORS.primary,
-    marginBottom: 8,
   },
 
   tipText: {
-    fontSize: 13,
+    fontSize: UI.typography.caption + 1,
     color: COLORS.textSecondary,
     lineHeight: 20,
   },

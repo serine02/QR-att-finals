@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "QR-ATT",
+    "name": "QR-APP",
     "slug": "qr-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,7 +18,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.debdeb3.qratt"
+      "package": "com.gilhang_123.qrapp",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -51,9 +55,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "1a09fab2-f203-4e0a-9c61-dd1ec09bf26e"
+        "projectId": "81a222fe-8328-42be-98d7-1b3e77dd43cf"
       }
     },
-    "owner": "debdeb3"
+    "owner": "gilhang_123"
   }
 }

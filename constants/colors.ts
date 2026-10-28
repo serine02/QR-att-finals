@@ -9,5 +9,13 @@ export const COLORS = {
   border: "#F5D9E1",
   shadow: "#EE7FA4",
   success: "#9DC3A6",
+  successSoft: "#E9F4EC",
+  successText: "#2E7D32",
+  warning: "#B7791F",
+  warningSoft: "#FFF3E0",
   danger: "#E07A93",
+  dangerSoft: "#FDECEF",
+  dangerText: "#C62828",
+  info: "#7FA8E0",
+  infoSoft: "#EAF1FB",
 } as const;

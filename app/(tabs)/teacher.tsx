@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useFocusEffect } from "expo-router";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -23,7 +24,9 @@ import {
 import QRCode from "react-native-qrcode-svg";
 
 import AppButton from "@/components/AppButton";
+import Badge from "@/components/Badge";
 import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 import { useAuth } from "@/lib/auth";
 import {
   createEvent,
@@ -121,7 +124,7 @@ export default function TeacherScreen() {
   );
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
   const [editingPart, setEditingPart] = useState<"date" | "time">("date");
-  const [payload, setPayload] = useState<string | null>(null);
+  const [visibleQrCode, setVisibleQrCode] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [existingEvents, setExistingEvents] = useState<CloudEvent[]>([]);
   const [existingLoading, setExistingLoading] = useState(true);
@@ -186,13 +189,25 @@ export default function TeacherScreen() {
     const current = editTarget === "start" ? startDate : endDate;
     const next = new Date(current);
 
-    next.setFullYear(
-      selected.getFullYear(),
-      selected.getMonth(),
-      selected.getDate(),
-    );
-
-    next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+    // Android opens date and time as separate pickers.
+    // Changing the date must not reset the chosen hour to midnight,
+    // and changing the hour must not overwrite the chosen date.
+    if (isAndroid && editingPart === "date") {
+      next.setFullYear(
+        selected.getFullYear(),
+        selected.getMonth(),
+        selected.getDate(),
+      );
+    } else if (isAndroid && editingPart === "time") {
+      next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+    } else {
+      next.setFullYear(
+        selected.getFullYear(),
+        selected.getMonth(),
+        selected.getDate(),
+      );
+      next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+    }
 
     if (editTarget === "start") {
       setStartDate(next);
@@ -217,8 +232,8 @@ export default function TeacherScreen() {
     const event = {
       eventId: eventId.trim(),
       title: title.trim(),
-      start: toLocalISO(startDate),
-      end: toLocalISO(endDate),
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
     };
 
     if (!event.eventId || !event.title) {
@@ -237,18 +252,10 @@ export default function TeacherScreen() {
         return;
       }
 
-      setMessage("Event created successfully! Your QR code is below.");
+      setMessage("Event created! Its QR code is below the event card.");
       setShowForm(false);
 
-      setPayload(
-        JSON.stringify({
-          v: 1,
-          event: event.eventId,
-          title: event.title,
-          start: event.start,
-          end: event.end,
-        }),
-      );
+      setVisibleQrCode(event.eventId);
 
       if (user) {
         getEventsByTeacher(user.id).then((events) => {
@@ -260,16 +267,8 @@ export default function TeacherScreen() {
   };
 
   const handleShowExisting = (ev: CloudEvent) => {
-    setMessage("Showing QR for an existing event:");
-
-    setPayload(
-      JSON.stringify({
-        v: 1,
-        event: ev.event_code,
-        title: ev.title,
-        start: ev.start_time ?? "",
-        end: ev.end_time ?? "",
-      }),
+    setVisibleQrCode((current) =>
+      current === ev.event_code ? null : ev.event_code,
     );
   };
 
@@ -312,7 +311,7 @@ export default function TeacherScreen() {
     if (ev.start_time) setStartDate(new Date(ev.start_time));
     if (ev.end_time) setEndDate(new Date(ev.end_time));
 
-    setPayload(null);
+    setVisibleQrCode(null);
   };
 
   const handleCancelEdit = () => {
@@ -330,8 +329,8 @@ export default function TeacherScreen() {
     const event = {
       eventId: eventId.trim(),
       title: title.trim(),
-      start: toLocalISO(startDate),
-      end: toLocalISO(endDate),
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
     };
 
     if (!event.eventId || !event.title) {
@@ -355,19 +354,11 @@ export default function TeacherScreen() {
         return;
       }
 
-      setMessage("Event updated successfully! The updated QR code is below.");
+      setMessage("Event updated! Its QR code is below the event card.");
       setShowForm(false);
 
       setEditingEvent(null);
-      setPayload(
-        JSON.stringify({
-          v: 1,
-          event: event.eventId,
-          title: event.title,
-          start: event.start,
-          end: event.end,
-        }),
-      );
+      setVisibleQrCode(event.eventId);
       refreshEvents();
     });
   };
@@ -392,7 +383,9 @@ export default function TeacherScreen() {
 
               if (editingEvent?.id === ev.id) {
                 setEditingEvent(null);
-                setPayload(null);
+              }
+              if (visibleQrCode === ev.event_code) {
+                setVisibleQrCode(null);
               }
 
               refreshEvents();
@@ -405,7 +398,8 @@ export default function TeacherScreen() {
 
   if (roleLoading) {
     return (
-      <View style={[styles.container, styles.content]}>
+      <View style={[styles.container, styles.content, styles.centerContent]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.subtitle}>Checking your account...</Text>
       </View>
     );
@@ -413,12 +407,14 @@ export default function TeacherScreen() {
 
   if (role !== "teacher") {
     return (
-      <View style={[styles.container, styles.content]}>
-        <Ionicons
-          name="lock-closed-outline"
-          size={40}
-          color={COLORS.textSecondary}
-        />
+      <View style={[styles.container, styles.content, styles.centerContent]}>
+        <View style={styles.lockIcon}>
+          <Ionicons
+            name="lock-closed-outline"
+            size={30}
+            color={COLORS.primary}
+          />
+        </View>
 
         <Text style={styles.title}>Teachers Only</Text>
 
@@ -448,7 +444,10 @@ export default function TeacherScreen() {
       </View>
 
       <Pressable
-        style={styles.primaryCreateButton}
+        style={({ pressed }) => [
+          styles.primaryCreateButton,
+          pressed && styles.pressed,
+        ]}
         onPress={() => {
           if (showForm && !editingEvent) {
             setShowForm(false);
@@ -589,7 +588,10 @@ export default function TeacherScreen() {
             {QUICK_END_OPTIONS.map((option) => (
               <Pressable
                 key={option.label}
-                style={styles.chip}
+                style={({ pressed }) => [
+                  styles.chip,
+                  pressed && styles.chipPressed,
+                ]}
                 onPress={() => handleQuickEnd(option.ms)}
               >
                 <Text style={styles.chipText}>{option.label}</Text>
@@ -638,7 +640,10 @@ export default function TeacherScreen() {
           <Pressable
             accessibilityLabel="Refresh events"
             onPress={refreshEvents}
-            style={styles.refreshButton}
+            style={({ pressed }) => [
+              styles.refreshButton,
+              pressed && styles.pressed,
+            ]}
           >
             <Ionicons name="refresh" size={19} color={COLORS.primary} />
           </Pressable>
@@ -650,44 +655,33 @@ export default function TeacherScreen() {
       </Text>
 
       {existingLoading ? (
-        <Text style={styles.subtitle}>Loading events...</Text>
+        <View style={styles.listState}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+          <Text style={styles.subtitle}>Loading events...</Text>
+        </View>
       ) : existingEvents.length === 0 ? (
-        <Text style={styles.subtitle}>No events created yet.</Text>
+        <View style={styles.listState}>
+          <EmptyEvents />
+        </View>
       ) : (
         <View>
           {existingEvents.map((ev) => {
             const status = getEventStatus(ev);
+
+            const badgeTone =
+              status === "Upcoming"
+                ? "upcoming"
+                : status === "Ongoing"
+                  ? "ongoing"
+                  : status === "Ended"
+                    ? "ended"
+                    : "unscheduled";
+
             return (
               <View key={ev.id} style={styles.eventCard}>
                 <View style={styles.eventCardHeading}>
                   <Text style={styles.eventCardTitle}>{ev.title}</Text>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      status === "Upcoming"
-                        ? styles.upcomingBadge
-                        : status === "Ongoing"
-                          ? styles.ongoingBadge
-                          : status === "Ended"
-                            ? styles.endedBadge
-                            : styles.unscheduledBadge,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusText,
-                        status === "Upcoming"
-                          ? styles.upcomingText
-                          : status === "Ongoing"
-                            ? styles.ongoingText
-                            : status === "Ended"
-                              ? styles.endedText
-                              : styles.unscheduledText,
-                      ]}
-                    >
-                      {status}
-                    </Text>
-                  </View>
+                  <Badge label={status} tone={badgeTone} />
                 </View>
 
                 <View style={styles.eventDetailRow}>
@@ -729,7 +723,11 @@ export default function TeacherScreen() {
 
                 <View style={styles.eventButtonRow}>
                   <Pressable
-                    style={[styles.eventAction, styles.showQrAction]}
+                    style={({ pressed }) => [
+                      styles.eventAction,
+                      styles.showQrAction,
+                      pressed && styles.pressed,
+                    ]}
                     onPress={() => handleShowExisting(ev)}
                   >
                     <Ionicons
@@ -737,10 +735,16 @@ export default function TeacherScreen() {
                       size={17}
                       color="#FFFFFF"
                     />
-                    <Text style={styles.showQrText}>Show QR</Text>
+                    <Text style={styles.showQrText}>
+                      {visibleQrCode === ev.event_code ? "Hide QR" : "Show QR"}
+                    </Text>
                   </Pressable>
                   <Pressable
-                    style={[styles.eventAction, styles.neutralAction]}
+                    style={({ pressed }) => [
+                      styles.eventAction,
+                      styles.neutralAction,
+                      pressed && styles.pressed,
+                    ]}
                     onPress={() => handleEditEvent(ev)}
                   >
                     <Ionicons
@@ -751,17 +755,43 @@ export default function TeacherScreen() {
                     <Text style={styles.neutralActionText}>Edit</Text>
                   </Pressable>
                   <Pressable
-                    style={[styles.eventAction, styles.neutralAction]}
+                    style={({ pressed }) => [
+                      styles.eventAction,
+                      styles.neutralAction,
+                      pressed && styles.pressed,
+                    ]}
                     onPress={() => handleDeleteEvent(ev)}
                   >
                     <Ionicons
                       name="trash-outline"
                       size={17}
-                      color={COLORS.danger}
+                      color={COLORS.dangerText}
                     />
-                    <Text style={styles.neutralActionText}>Delete</Text>
+                    <Text style={styles.dangerActionText}>Delete</Text>
                   </Pressable>
                 </View>
+                {visibleQrCode === ev.event_code && (
+                  <View style={styles.inlineQrCard}>
+                    <Text style={styles.resultTitle}>
+                      Scan this QR code for {ev.title}:
+                    </Text>
+                    <View style={styles.qrBox}>
+                      <QRCode
+                        value={JSON.stringify({
+                          v: 1,
+                          event: ev.event_code,
+                          title: ev.title,
+                          start: ev.start_time ?? "",
+                          end: ev.end_time ?? "",
+                        })}
+                        size={200}
+                      />
+                    </View>
+                    <Text style={styles.inlineQrHint}>
+                      Show this QR to students during the scheduled event.
+                    </Text>
+                  </View>
+                )}
               </View>
             );
           })}
@@ -778,21 +808,27 @@ export default function TeacherScreen() {
           />
         </View>
       )}
-
-      {payload && (
-        <View style={styles.resultCard}>
-          <Text style={styles.resultTitle}>
-            Scan this QR code with the Scan tab:
-          </Text>
-
-          <View style={styles.qrBox}>
-            <QRCode value={payload} size={200} />
-          </View>
-
-          <Text style={styles.payloadText}>{payload}</Text>
-        </View>
-      )}
     </ScrollView>
+  );
+}
+
+function EmptyEvents() {
+  return (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIcon}>
+        <Ionicons
+          name="calendar-clear-outline"
+          size={30}
+          color={COLORS.primary}
+        />
+      </View>
+
+      <Text style={styles.emptyTitle}>No events created yet</Text>
+
+      <Text style={styles.emptyText}>
+        Tap "Create New Event" to schedule your first attendance event.
+      </Text>
+    </View>
   );
 }
 
@@ -863,23 +899,41 @@ function PickerField({ value, icon, onPress }: PickerFieldProps) {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  content: {
+    paddingHorizontal: UI.space.xl,
+    paddingTop: UI.space.xl,
+    paddingBottom: 40,
+  },
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  pressed: {
+    opacity: 0.75,
+  },
   pageHeading: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
-    gap: 12,
+    marginBottom: UI.space.lg,
+    gap: UI.space.md,
   },
   headingIcon: {
     width: 46,
     height: 46,
     borderRadius: 15,
     backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: "center",
     justifyContent: "center",
   },
   pageTitle: { fontSize: 24, fontWeight: "800", color: COLORS.textPrimary },
   pageSubtitle: {
-    fontSize: 13,
+    fontSize: UI.typography.caption + 1,
     color: COLORS.textSecondary,
     marginTop: 3,
     lineHeight: 19,
@@ -889,32 +943,51 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 16,
+    minHeight: 52,
+    paddingVertical: UI.space.lg,
+    borderRadius: UI.radius.large,
     gap: 9,
-    marginBottom: 8,
+    marginBottom: UI.space.sm,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
-  primaryCreateText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
+  primaryCreateText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 16,
+  },
   formCard: {
     backgroundColor: COLORS.card,
-    padding: 17,
-    borderRadius: 18,
+    padding: UI.space.lg,
+    borderRadius: UI.radius.large,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginTop: 14,
+    marginTop: UI.space.md,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
-  formHeading: { fontSize: 18, fontWeight: "700", color: COLORS.textPrimary },
+  formHeading: {
+    fontSize: UI.typography.section,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+  },
   formDescription: {
-    fontSize: 13,
+    fontSize: UI.typography.caption + 1,
     color: COLORS.textSecondary,
     marginTop: 5,
-    marginBottom: 8,
+    marginBottom: UI.space.sm,
   },
   noticeText: {
-    fontSize: 13,
+    fontSize: UI.typography.caption + 1,
     color: COLORS.primary,
     textAlign: "center",
-    marginTop: 12,
+    marginTop: UI.space.md,
   },
   sectionControls: {
     flexDirection: "row",
@@ -928,25 +1001,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 12,
+    borderRadius: UI.radius.medium - 2,
     alignItems: "center",
     justifyContent: "center",
   },
   eventCard: {
     backgroundColor: COLORS.card,
-    borderRadius: 18,
+    borderRadius: UI.radius.large,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 16,
-    marginTop: 12,
+    padding: UI.space.lg,
+    marginTop: UI.space.md,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
   eventCardHeading: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 8,
-    marginBottom: 11,
+    gap: UI.space.sm,
+    marginBottom: UI.space.md,
   },
   eventCardTitle: {
     flex: 1,
@@ -960,16 +1037,27 @@ const styles = StyleSheet.create({
     gap: 9,
     marginTop: 7,
   },
-  eventDetailText: { flex: 1, fontSize: 12, color: COLORS.textSecondary },
-  eventButtonRow: { flexDirection: "row", gap: 8, marginTop: 17 },
+  eventDetailText: {
+    flex: 1,
+    fontSize: UI.typography.caption + 1,
+    color: COLORS.textSecondary,
+  },
+  eventButtonRow: {
+    flexDirection: "row",
+    gap: UI.space.sm,
+    marginTop: UI.space.lg,
+    paddingTop: UI.space.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
   eventAction: {
     flex: 1,
-    minHeight: 43,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 5,
-    borderRadius: 12,
+    borderRadius: UI.radius.medium,
     paddingHorizontal: 4,
   },
   showQrAction: { backgroundColor: COLORS.primary },
@@ -980,56 +1068,92 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 12,
   },
-  upcomingText: { color: "#1D4ED8" },
-  ongoingText: { color: "#166534" },
-  endedText: { color: "#475569" },
-  unscheduledText: { color: "#92400E" },
-
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
+  dangerActionText: {
+    color: COLORS.dangerText,
+    fontWeight: "600",
+    fontSize: 12,
   },
-  content: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
+  lockIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: UI.space.lg,
   },
   title: {
     fontSize: 20,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.textPrimary,
-    marginBottom: 4,
+    marginBottom: UI.space.xs,
+    textAlign: "center",
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     color: COLORS.textSecondary,
     lineHeight: 20,
-    marginBottom: 16,
+    marginTop: UI.space.md,
+    textAlign: "center",
+  },
+  listState: {
+    alignItems: "center",
+    paddingVertical: UI.space.xl,
+  },
+  emptyState: {
+    alignItems: "center",
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: UI.space.md,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+  },
+  emptyText: {
+    fontSize: UI.typography.caption + 1,
+    color: COLORS.textSecondary,
+    textAlign: "center",
+    lineHeight: 19,
+    marginTop: UI.space.sm,
   },
   label: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     fontWeight: "600",
     color: COLORS.textPrimary,
     marginBottom: 6,
-    marginTop: 10,
+    marginTop: UI.space.lg,
   },
   input: {
     backgroundColor: COLORS.card,
-    borderRadius: 14,
+    borderRadius: UI.radius.medium - 2,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: UI.space.md,
+    paddingVertical: UI.space.md,
+    minHeight: 46,
     fontSize: 15,
     color: COLORS.textPrimary,
   },
   pickerField: {
     backgroundColor: COLORS.card,
-    borderRadius: 14,
+    borderRadius: UI.radius.medium - 2,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: UI.space.md,
+    paddingVertical: UI.space.md,
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -1045,46 +1169,51 @@ const styles = StyleSheet.create({
   },
   chipRow: {
     flexDirection: "row",
-    marginTop: 8,
+    marginTop: UI.space.sm,
+    flexWrap: "wrap",
   },
   chip: {
     backgroundColor: COLORS.surface,
     borderRadius: 999,
-    paddingHorizontal: 14,
+    paddingHorizontal: UI.space.md,
     paddingVertical: 7,
-    marginRight: 8,
+    marginRight: UI.space.sm,
+    marginBottom: UI.space.sm,
+  },
+  chipPressed: {
+    opacity: 0.7,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: UI.typography.caption + 1,
     fontWeight: "600",
     color: COLORS.primary,
   },
   hint: {
-    fontSize: 12,
+    fontSize: UI.typography.caption,
     color: COLORS.textSecondary,
     marginTop: 6,
   },
   pickerContainer: {
-    marginTop: 12,
+    marginTop: UI.space.md,
     alignItems: "center",
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: UI.typography.caption,
     fontWeight: "600",
     color: COLORS.textSecondary,
     marginBottom: 4,
-    marginTop: 12,
+    marginTop: UI.space.md,
   },
   editControls: {
     marginTop: 4,
   },
   cancelEditButton: {
-    marginTop: 12,
+    marginTop: UI.space.md,
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: UI.space.sm,
   },
   cancelEditText: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     fontWeight: "600",
     color: COLORS.textSecondary,
   },
@@ -1100,134 +1229,72 @@ const styles = StyleSheet.create({
   },
   sectionCount: {
     marginLeft: 10,
-    fontSize: 12,
+    fontSize: UI.typography.caption,
     fontWeight: "700",
     color: COLORS.textOnPrimary,
     backgroundColor: COLORS.primary,
     borderRadius: 999,
-    paddingHorizontal: 8,
+    paddingHorizontal: UI.space.sm,
     paddingVertical: 2,
+    overflow: "hidden",
   },
   sectionHint: {
-    fontSize: 12,
+    fontSize: UI.typography.caption,
     color: COLORS.textSecondary,
     marginTop: 4,
   },
-  existingCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginTop: 10,
-  },
-  existingMain: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  existingActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.surface,
-    marginLeft: 8,
-  },
-  actionButtonPressed: {
-    opacity: 0.6,
-  },
-  dangerButton: {
-    backgroundColor: COLORS.danger + "14",
-  },
-  existingInfo: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  existingTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.textPrimary,
-    flexShrink: 1,
-  },
-  eventTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  statusBadge: {
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: COLORS.textPrimary,
-  },
-  upcomingBadge: {
-    backgroundColor: "#DBEAFE",
-  },
-  ongoingBadge: {
-    backgroundColor: "#DCFCE7",
-  },
-  endedBadge: {
-    backgroundColor: "#F3F4F6",
-  },
-  unscheduledBadge: {
-    backgroundColor: "#FEF3C7",
-  },
-  existingCode: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
   message: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     color: COLORS.primary,
     textAlign: "center",
-    marginTop: 12,
+    marginTop: UI.space.md,
+  },
+  inlineQrCard: {
+    marginTop: UI.space.md,
+    padding: UI.space.lg,
+    alignItems: "center",
+    backgroundColor: COLORS.background,
+    borderRadius: UI.radius.large,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  inlineQrHint: {
+    fontSize: UI.typography.caption,
+    color: COLORS.textSecondary,
+    textAlign: "center",
+    marginTop: UI.space.xs,
   },
   resultCard: {
     backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: UI.radius.large,
+    padding: UI.space.lg,
     marginTop: 20,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
     shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   resultTitle: {
     fontSize: 15,
     fontWeight: "600",
     color: COLORS.textPrimary,
     textAlign: "center",
-    marginBottom: 12,
+    marginBottom: UI.space.md,
   },
   qrBox: {
     backgroundColor: "#FFFFFF",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 12,
+    padding: UI.space.md,
+    borderRadius: UI.radius.small,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: UI.space.md,
   },
   payloadText: {
-    fontSize: 12,
+    fontSize: UI.typography.caption,
     color: COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 16,

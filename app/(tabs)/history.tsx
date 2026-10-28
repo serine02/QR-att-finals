@@ -3,14 +3,18 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 
+import Badge from "@/components/Badge";
+import EmptyState from "@/components/EmptyState";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 
 import { getAttendanceHistory, type AttendanceRecord } from "@/lib/database";
 
@@ -111,30 +115,35 @@ export default function HistoryScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <Text style={styles.title}>Attendance History</Text>
 
         <View style={styles.center}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.subtitle}>Loading attendance records...</Text>
+          <Text style={styles.centerText}>Loading attendance records...</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <Text style={styles.title}>Attendance History</Text>
-        <Text style={styles.error}>{error}</Text>
-      </View>
+
+        <EmptyState
+          icon="alert-circle-outline"
+          title="Something went wrong"
+          message={error}
+        />
+      </SafeAreaView>
     );
   }
 
   // TEACHER ATTENDANCE HISTORY
   if (role === "teacher") {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <Text style={styles.title}>Attendance History</Text>
         <Text style={styles.description}>
           View attendance records from your school events.
@@ -150,13 +159,19 @@ export default function HistoryScreen() {
           keyExtractor={(item) => item.eventId}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.subtitle}>No events created yet.</Text>
+            <EmptyState
+              icon="calendar-clear-outline"
+              title="No events yet"
+              message="Events you create will appear here with their attendance."
+            />
           }
           renderItem={({ item }) => (
             <View style={styles.card}>
               <Text style={styles.eventTitle}>{item.title}</Text>
 
-              <Text style={styles.eventMeta}>Event Code: {item.eventCode}</Text>
+              <Text style={styles.eventMeta}>
+                Event Code: {item.eventCode}
+              </Text>
 
               <Text style={styles.eventMeta}>
                 Start: {item.startTime ? formatDate(item.startTime) : "N/A"}
@@ -196,13 +211,19 @@ export default function HistoryScreen() {
             </View>
           )}
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
+  const confirmedCount = studentRecords.filter(
+    (record) => record.synced === 1,
+  ).length;
+
+  const pendingCount = studentRecords.length - confirmedCount;
+
   // STUDENT ATTENDANCE HISTORY
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Attendance History</Text>
 
       <Text style={styles.description}>
@@ -210,8 +231,28 @@ export default function HistoryScreen() {
       </Text>
 
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Total Records</Text>
-        <Text style={styles.summaryValue}>{studentRecords.length}</Text>
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryValue}>{studentRecords.length}</Text>
+          <Text style={styles.summaryLabel}>Total</Text>
+        </View>
+
+        <View style={styles.summaryDivider} />
+
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryValue, styles.summaryConfirmed]}>
+            {confirmedCount}
+          </Text>
+          <Text style={styles.summaryLabel}>Confirmed</Text>
+        </View>
+
+        <View style={styles.summaryDivider} />
+
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryValue, styles.summaryPending]}>
+            {pendingCount}
+          </Text>
+          <Text style={styles.summaryLabel}>Pending</Text>
+        </View>
       </View>
 
       <FlatList
@@ -219,9 +260,11 @@ export default function HistoryScreen() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={styles.subtitle}>
-            No records yet. Scan a QR code to register your attendance.
-          </Text>
+          <EmptyState
+            icon="qr-code-outline"
+            title="No records yet"
+            message="Scan a QR code to register your attendance."
+          />
         }
         renderItem={({ item }) => {
           const isSynced = item.synced === 1;
@@ -231,21 +274,10 @@ export default function HistoryScreen() {
               <View style={styles.cardHeader}>
                 <Text style={styles.eventTitle}>{item.eventTitle}</Text>
 
-                <View
-                  style={[
-                    styles.badge,
-                    isSynced ? styles.confirmedBadge : styles.pendingBadge,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.badgeText,
-                      isSynced ? styles.confirmedText : styles.pendingText,
-                    ]}
-                  >
-                    {isSynced ? "Confirmed" : "Pending Sync"}
-                  </Text>
-                </View>
+                <Badge
+                  label={isSynced ? "Confirmed" : "Pending Sync"}
+                  tone={isSynced ? "confirmed" : "pending"}
+                />
               </View>
 
               <Text style={styles.eventMeta}>Event ID: {item.eventId}</Text>
@@ -264,7 +296,7 @@ export default function HistoryScreen() {
           );
         }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -289,21 +321,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingHorizontal: UI.space.lg,
+    paddingTop: UI.space.xl,
   },
 
   title: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     color: COLORS.textPrimary,
     marginBottom: 6,
   },
 
   description: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     color: COLORS.textSecondary,
-    marginBottom: 20,
+    marginBottom: UI.space.lg,
     lineHeight: 20,
   },
 
@@ -313,40 +345,59 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  subtitle: {
-    fontSize: 14,
+  centerText: {
+    fontSize: UI.typography.body,
     color: COLORS.textSecondary,
     textAlign: "center",
-    marginTop: 24,
+    marginTop: UI.space.md,
     lineHeight: 21,
-  },
-
-  error: {
-    color: "#C62828",
-    textAlign: "center",
-    marginTop: 30,
-    fontSize: 14,
   },
 
   summaryCard: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 18,
+    borderRadius: UI.radius.large,
+    padding: UI.space.lg,
+    marginBottom: UI.space.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
 
-  summaryLabel: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginBottom: 5,
+  summaryItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  summaryDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: COLORS.border,
   },
 
   summaryValue: {
-    fontSize: 26,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     color: COLORS.primary,
+  },
+
+  summaryConfirmed: {
+    color: COLORS.successText,
+  },
+
+  summaryPending: {
+    color: COLORS.warning,
+  },
+
+  summaryLabel: {
+    fontSize: UI.typography.caption,
+    color: COLORS.textSecondary,
+    marginTop: 4,
   },
 
   list: {
@@ -356,18 +407,15 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: UI.radius.large,
+    padding: UI.space.lg,
+    marginBottom: UI.space.md,
     borderWidth: 1,
     borderColor: COLORS.border,
     shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
 
@@ -375,8 +423,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 8,
-    marginBottom: 8,
+    gap: UI.space.sm,
+    marginBottom: UI.space.sm,
   },
 
   eventTitle: {
@@ -387,67 +435,45 @@ const styles = StyleSheet.create({
   },
 
   eventMeta: {
-    fontSize: 13,
+    fontSize: UI.typography.caption + 1,
     color: COLORS.textSecondary,
     marginTop: 5,
   },
 
-  badge: {
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-
-  badgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-
-  confirmedBadge: {
-    backgroundColor: "#E8F5E9",
-  },
-
-  confirmedText: {
-    color: "#2E7D32",
-  },
-
-  pendingBadge: {
-    backgroundColor: "#FFF3E0",
-  },
-
-  pendingText: {
-    color: "#B7791F",
-  },
-
   pendingNotice: {
-    fontSize: 12,
-    color: "#B7791F",
-    marginTop: 12,
+    fontSize: UI.typography.caption,
+    color: COLORS.warning,
+    marginTop: UI.space.md,
     lineHeight: 18,
   },
 
   attendeeHeader: {
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: UI.space.lg,
+    marginBottom: UI.space.sm,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    paddingTop: 12,
+    paddingTop: UI.space.md,
   },
 
   attendeeTitle: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     fontWeight: "700",
     color: COLORS.primary,
   },
 
   attendeeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: UI.space.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     paddingVertical: 10,
   },
 
   attendeeName: {
-    fontSize: 14,
+    flex: 1,
+    fontSize: UI.typography.body,
     color: COLORS.textPrimary,
     fontWeight: "600",
   },

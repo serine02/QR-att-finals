@@ -14,7 +14,9 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 
 import AppButton from "@/components/AppButton";
+import Badge from "@/components/Badge";
 import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 import { useAuth, signOut } from "@/lib/auth";
 import { getProfile, updateProfile, type Profile } from "@/lib/profiles";
 
@@ -182,12 +184,12 @@ export default function ProfileScreen() {
           ? "Student"
           : profile?.role || "Unknown Role";
 
-  const roleBadgeStyle =
+  const roleTone =
     normalizedRole === "administrator" || normalizedRole === "admin"
-      ? styles.roleBadgeAdmin
+      ? "info"
       : normalizedRole === "teacher"
-        ? styles.roleBadgeTeacher
-        : styles.roleBadgeStudent;
+        ? "unscheduled"
+        : "confirmed";
 
   // Initial loading screen.
   if (loading && !profile) {
@@ -222,11 +224,14 @@ export default function ProfileScreen() {
           </View>
 
           <Pressable
-            style={styles.refreshButton}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              pressed && styles.buttonPressed,
+            ]}
             onPress={handleRefresh}
             disabled={refreshing}
           >
-            <Text style={styles.refreshButtonText}>
+            <Text style={styles.secondaryButtonText}>
               {refreshing ? "Loading..." : "Refresh"}
             </Text>
           </Pressable>
@@ -235,20 +240,23 @@ export default function ProfileScreen() {
         {profile ? (
           <View style={styles.infoCard}>
             {/* Profile Avatar */}
-            <View style={styles.profileIcon}>
-              <Text style={styles.profileIconText}>
-                {(profile.full_name || profile.email || "U")
-                  .trim()
-                  .charAt(0)
-                  .toUpperCase()}
-              </Text>
-            </View>
+            <View style={styles.avatarRow}>
+              <View style={styles.profileIcon}>
+                <Text style={styles.profileIconText}>
+                  {(profile.full_name || profile.email || "U")
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase()}
+                </Text>
+              </View>
 
-            <Text style={styles.cardHeading}>Account Information</Text>
+              <View style={styles.avatarInfo}>
+                <Text style={styles.avatarName} numberOfLines={2}>
+                  {profile.full_name || "No name added"}
+                </Text>
 
-            {/* Account Role Badge */}
-            <View style={[styles.roleBadge, roleBadgeStyle]}>
-              <Text style={styles.roleBadgeText}>{roleLabel}</Text>
+                <Badge label={roleLabel} tone={roleTone} />
+              </View>
             </View>
 
             {/* Full Name */}
@@ -273,9 +281,10 @@ export default function ProfileScreen() {
 
                   <View style={styles.editActions}>
                     <Pressable
-                      style={[
-                        styles.saveButton,
-                        saving && styles.disabledButton,
+                      style={({ pressed }) => [
+                        styles.primaryButton,
+                        saving && styles.buttonDisabled,
+                        pressed && styles.buttonPressed,
                       ]}
                       onPress={handleSaveName}
                       disabled={saving}
@@ -283,16 +292,24 @@ export default function ProfileScreen() {
                       {saving ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
-                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                        <Text style={styles.primaryButtonText}>
+                          Save Changes
+                        </Text>
                       )}
                     </Pressable>
 
                     <Pressable
-                      style={styles.cancelButton}
+                      style={({ pressed }) => [
+                        styles.secondaryButton,
+                        styles.growButton,
+                        pressed && styles.buttonPressed,
+                      ]}
                       onPress={handleCancelEdit}
                       disabled={saving}
                     >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                      <Text style={styles.secondaryButtonTextNeutral}>
+                        Cancel
+                      </Text>
                     </Pressable>
                   </View>
                 </>
@@ -307,15 +324,20 @@ export default function ProfileScreen() {
                       setDraftName(profile.full_name ?? "");
                       setEditing(true);
                     }}
-                    style={styles.editButton}
+                    style={({ pressed }) => [
+                      styles.secondaryButton,
+                      pressed && styles.buttonPressed,
+                    ]}
                     accessibilityRole="button"
                     accessibilityLabel="Edit full name"
                   >
-                    <Text style={styles.editButtonText}>Edit</Text>
+                    <Text style={styles.secondaryButtonText}>Edit</Text>
                   </Pressable>
                 </View>
               )}
             </View>
+
+            <View style={styles.divider} />
 
             {/* Email Address */}
             <View style={styles.section}>
@@ -325,11 +347,15 @@ export default function ProfileScreen() {
               </Text>
             </View>
 
+            <View style={styles.divider} />
+
             {/* Account Role */}
             <View style={styles.section}>
               <Text style={styles.label}>Account Role</Text>
               <Text style={styles.value}>{roleLabel}</Text>
             </View>
+
+            <View style={styles.divider} />
 
             {/* User ID */}
             <View style={styles.section}>
@@ -355,11 +381,16 @@ export default function ProfileScreen() {
             </Text>
 
             <Pressable
-              style={[styles.saveButton, refreshing && styles.disabledButton]}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                styles.growButton,
+                refreshing && styles.buttonDisabled,
+                pressed && styles.buttonPressed,
+              ]}
               onPress={handleRefresh}
               disabled={refreshing}
             >
-              <Text style={styles.saveButtonText}>
+              <Text style={styles.primaryButtonText}>
                 {refreshing ? "Loading..." : "Retry"}
               </Text>
             </Pressable>
@@ -386,8 +417,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingHorizontal: UI.space.xl,
+    paddingTop: UI.space.xl,
     paddingBottom: 40,
     flexGrow: 1,
   },
@@ -398,16 +429,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: UI.typography.body,
     color: COLORS.textSecondary,
-    marginTop: 12,
+    marginTop: UI.space.md,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
-    gap: 12,
+    marginBottom: UI.space.xl,
+    gap: UI.space.md,
   },
   headerText: {
     flex: 1,
@@ -418,80 +449,70 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: UI.typography.caption + 1,
     color: COLORS.textSecondary,
     marginTop: 6,
-    maxWidth: 230,
     lineHeight: 19,
-  },
-  refreshButton: {
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  refreshButtonText: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: "700",
   },
   infoCard: {
     backgroundColor: COLORS.card,
-    borderRadius: 18,
+    borderRadius: UI.radius.large,
     padding: 20,
-    marginBottom: 24,
+    marginBottom: UI.space.xl,
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  avatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: UI.space.md,
+    marginBottom: UI.space.lg,
+    paddingBottom: UI.space.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   profileIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 14,
   },
   profileIconText: {
     color: COLORS.primary,
-    fontSize: 25,
+    fontSize: 28,
     fontWeight: "800",
   },
-  cardHeading: {
-    fontSize: 18,
-    fontWeight: "800",
+  avatarInfo: {
+    flex: 1,
+    gap: UI.space.sm,
+  },
+  avatarName: {
+    fontSize: 17,
+    fontWeight: "700",
     color: COLORS.textPrimary,
-    marginBottom: 14,
-  },
-  roleBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    marginBottom: 8,
-  },
-  roleBadgeAdmin: {
-    backgroundColor: "#DDE8FF",
-  },
-  roleBadgeTeacher: {
-    backgroundColor: "#FFF0C2",
-  },
-  roleBadgeStudent: {
-    backgroundColor: "#DDF5E4",
-  },
-  roleBadgeText: {
-    color: "#24413C",
-    fontWeight: "800",
-    fontSize: 12,
   },
   section: {
-    marginTop: 20,
+    marginTop: UI.space.lg,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginTop: UI.space.lg,
   },
   label: {
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "700",
     color: COLORS.textSecondary,
-    marginBottom: 8,
+    marginBottom: UI.space.sm,
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
@@ -502,7 +523,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   valueSmall: {
-    fontSize: 12,
+    fontSize: UI.typography.caption,
     color: COLORS.textSecondary,
     lineHeight: 18,
   },
@@ -510,91 +531,95 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 12,
-  },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: COLORS.surface,
-    borderRadius: 9,
-  },
-  editButtonText: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: "800",
+    gap: UI.space.md,
   },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    borderRadius: UI.radius.medium - 2,
+    paddingHorizontal: UI.space.md,
     paddingVertical: 11,
-    fontSize: 14,
+    minHeight: 46,
+    fontSize: UI.typography.body,
     color: COLORS.textPrimary,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.card,
   },
   editActions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    marginTop: 12,
+    gap: UI.space.sm,
+    marginTop: UI.space.md,
   },
-  saveButton: {
+  primaryButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: UI.radius.small,
+    paddingHorizontal: UI.space.lg,
+    paddingVertical: UI.space.md,
     minHeight: 42,
-  },
-  saveButtonText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  cancelButton: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  cancelButtonText: {
+  secondaryButton: {
+    backgroundColor: COLORS.surface,
+    borderRadius: UI.radius.small,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  secondaryButtonText: {
+    color: COLORS.primary,
+    fontSize: UI.typography.caption + 1,
+    fontWeight: "700",
+  },
+  secondaryButtonTextNeutral: {
     color: COLORS.textSecondary,
-    fontSize: 12,
-    fontWeight: "800",
+    fontSize: UI.typography.caption + 1,
+    fontWeight: "700",
+  },
+  primaryButtonText: {
+    color: COLORS.textOnPrimary,
+    fontSize: UI.typography.caption + 1,
+    fontWeight: "700",
+  },
+  growButton: {
+    flexGrow: 1,
+  },
+  buttonPressed: {
+    opacity: 0.7,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   refreshHint: {
     color: COLORS.textSecondary,
     fontSize: 11,
     lineHeight: 17,
-    marginTop: 22,
+    marginTop: UI.space.xl,
   },
   emptyCard: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
+    borderRadius: UI.radius.large,
     padding: 22,
     alignItems: "flex-start",
-    marginBottom: 24,
+    marginBottom: UI.space.xl,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   emptyTitle: {
     color: COLORS.textPrimary,
     fontSize: 17,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   emptyText: {
     color: COLORS.textSecondary,
-    fontSize: 13,
+    fontSize: UI.typography.caption + 1,
     lineHeight: 19,
-    marginTop: 8,
-    marginBottom: 16,
+    marginTop: UI.space.sm,
+    marginBottom: UI.space.lg,
   },
   signOutContainer: {
-    marginTop: 4,
+    marginTop: UI.space.xs,
   },
 });

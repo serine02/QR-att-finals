@@ -9,9 +9,11 @@ type AuthState = {
   loading: boolean;
 };
 
+// Public registrations can only request a student profile.
+// Teacher accounts must be created by an administrator.
 export type SignUpProfile = {
   full_name: string;
-  role: "student" | "teacher";
+  role?: "student";
 };
 
 // Shared authentication state
@@ -21,7 +23,6 @@ let initialized = false;
 
 const subscribers = new Set<() => void>();
 
-// Notify all components when authentication changes
 function notifySubscribers() {
   console.log("AUTH DEBUG: notifying subscribers");
 
@@ -30,7 +31,6 @@ function notifySubscribers() {
   });
 }
 
-// Update the authentication session
 function updateSession(session: Session | null) {
   console.log(
     "AUTH DEBUG: session updated",
@@ -47,7 +47,6 @@ export function setAuth(session: Session | null) {
   updateSession(session);
 }
 
-// Initialize Supabase authentication once
 function initializeAuth() {
   console.log("AUTH DEBUG: initializeAuth called");
 
@@ -67,8 +66,7 @@ function initializeAuth() {
 
   console.log("AUTH DEBUG: starting getSession");
 
-  // Always finish the initial loading state,
-  // even if getSession takes too long.
+  // Preserve the existing startup timeout behavior.
   void (async () => {
     try {
       const result = await Promise.race([
@@ -107,7 +105,6 @@ function initializeAuth() {
   })();
 }
 
-// Hook used throughout the application
 export function useAuth(): AuthState {
   const [, refresh] = useState(0);
 
@@ -126,6 +123,7 @@ export function useAuth(): AuthState {
 
     return () => {
       console.log("AUTH DEBUG: useAuth unmounted");
+
       subscribers.delete(subscriber);
     };
   }, []);
@@ -137,7 +135,8 @@ export function useAuth(): AuthState {
   };
 }
 
-// Register a user
+// Public signup always creates a student account.
+// Never accept a teacher/admin role from public signup.
 export async function signUp(
   email: string,
   password: string,
@@ -152,12 +151,14 @@ export async function signUp(
     return { data, error };
   }
 
+  // Only update the user's name.
+  // The student role must be assigned and protected
+  // by the Supabase database.
   if (data.session && profile) {
     const { error: profileError } = await supabase
       .from("profiles")
       .update({
         full_name: profile.full_name.trim(),
-        role: profile.role,
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.session.user.id);

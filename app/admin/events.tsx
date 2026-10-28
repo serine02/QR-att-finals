@@ -18,6 +18,9 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 
+import EmptyState from "@/components/EmptyState";
+import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
@@ -43,19 +46,6 @@ const EMPTY_FORM: EventForm = {
   event_code: "",
   start_time: "",
   end_time: "",
-};
-
-const COLORS = {
-  primary: "#246B67",
-  primaryLight: "#E7F3F1",
-  background: "#F5F8F8",
-  white: "#FFFFFF",
-  text: "#203334",
-  muted: "#718181",
-  border: "#E1E9E8",
-  danger: "#C62828",
-  dangerLight: "#FDECEC",
-  success: "#237A57",
 };
 
 function formatDate(value: string) {
@@ -402,7 +392,11 @@ export default function AdminEventsScreen() {
       </View>
 
       <View style={styles.dateRow}>
-        <Ionicons name="stop-circle-outline" size={18} color={COLORS.danger} />
+        <Ionicons
+          name="stop-circle-outline"
+          size={18}
+          color={COLORS.dangerText}
+        />
         <View style={styles.dateTextContainer}>
           <Text style={styles.dateLabel}>ENDS</Text>
           <Text style={styles.dateValue}>{formatDate(item.end_time)}</Text>
@@ -411,7 +405,10 @@ export default function AdminEventsScreen() {
 
       <View style={styles.cardActions}>
         <Pressable
-          style={styles.editButton}
+          style={({ pressed }) => [
+            styles.editButton,
+            pressed && styles.pressed,
+          ]}
           onPress={() => openEditModal(item)}
         >
           <Ionicons name="create-outline" size={18} color={COLORS.primary} />
@@ -419,10 +416,13 @@ export default function AdminEventsScreen() {
         </Pressable>
 
         <Pressable
-          style={styles.deleteButton}
+          style={({ pressed }) => [
+            styles.deleteButton,
+            pressed && styles.pressed,
+          ]}
           onPress={() => deleteEvent(item)}
         >
-          <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+          <Ionicons name="trash-outline" size={18} color={COLORS.dangerText} />
           <Text style={styles.deleteButtonText}>Delete</Text>
         </Pressable>
       </View>
@@ -442,10 +442,17 @@ export default function AdminEventsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
         <Pressable
-          style={styles.backButton}
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressed,
+          ]}
           onPress={() => router.replace("/admin")}
         >
-          <Ionicons name="arrow-back" size={23} color={COLORS.text} />
+          <Ionicons
+            name="arrow-back"
+            size={23}
+            color={COLORS.textPrimary}
+          />
         </Pressable>
 
         <View style={styles.topBarTitleContainer}>
@@ -454,7 +461,11 @@ export default function AdminEventsScreen() {
         </View>
 
         <View style={styles.adminBadge}>
-          <Ionicons name="shield-checkmark" size={19} color={COLORS.primary} />
+          <Ionicons
+            name="shield-checkmark"
+            size={19}
+            color={COLORS.primary}
+          />
         </View>
       </View>
 
@@ -468,7 +479,10 @@ export default function AdminEventsScreen() {
             <Text style={styles.summaryNumber}>{events.length}</Text>
           </View>
           <Pressable
-            style={styles.refreshButton}
+            style={({ pressed }) => [
+              styles.refreshButton,
+              pressed && styles.pressed,
+            ]}
             onPress={() => void loadEvents(true)}
             disabled={refreshing}
           >
@@ -477,18 +491,26 @@ export default function AdminEventsScreen() {
         </View>
 
         <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={20} color={COLORS.muted} />
+          <Ionicons
+            name="search-outline"
+            size={20}
+            color={COLORS.textSecondary}
+          />
           <TextInput
             style={styles.searchInput}
             placeholder="Search event title or code..."
-            placeholderTextColor={COLORS.muted}
+            placeholderTextColor={COLORS.textSecondary}
             value={search}
             onChangeText={setSearch}
             autoCapitalize="none"
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={20} color={COLORS.muted} />
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={COLORS.textSecondary}
+              />
             </Pressable>
           )}
         </View>
@@ -515,27 +537,24 @@ export default function AdminEventsScreen() {
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <Ionicons
-                  name="calendar-clear-outline"
-                  size={35}
-                  color={COLORS.primary}
-                />
-              </View>
-              <Text style={styles.emptyTitle}>No events found</Text>
-              <Text style={styles.emptyDescription}>
-                {search
+            <EmptyState
+              icon="calendar-clear-outline"
+              title="No events found"
+              message={
+                search
                   ? "Try another event title or code."
-                  : "Create an event to get started."}
-              </Text>
-            </View>
+                  : "Create an event to get started."
+              }
+            />
           }
         />
       </View>
 
-      <Pressable style={styles.fab} onPress={openCreateModal}>
-        <Ionicons name="add" size={25} color={COLORS.white} />
+      <Pressable
+        style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+        onPress={openCreateModal}
+      >
+        <Ionicons name="add" size={25} color="#FFFFFF" />
         <Text style={styles.fabText}>Create Event</Text>
       </Pressable>
 
@@ -569,7 +588,7 @@ export default function AdminEventsScreen() {
                 disabled={saving}
                 onPress={() => setModalVisible(false)}
               >
-                <Ionicons name="close" size={23} color={COLORS.text} />
+                <Ionicons name="close" size={23} color={COLORS.textPrimary} />
               </Pressable>
             </View>
 
@@ -581,7 +600,7 @@ export default function AdminEventsScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Annual School Assembly"
-                placeholderTextColor={COLORS.muted}
+                placeholderTextColor={COLORS.textSecondary}
                 value={form.title}
                 onChangeText={(value) => updateField("title", value)}
                 editable={!saving}
@@ -592,7 +611,7 @@ export default function AdminEventsScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. ASSEMBLY2026"
-                placeholderTextColor={COLORS.muted}
+                placeholderTextColor={COLORS.textSecondary}
                 value={form.event_code}
                 onChangeText={(value) => updateField("event_code", value)}
                 autoCapitalize="characters"
@@ -604,7 +623,7 @@ export default function AdminEventsScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="YYYY-MM-DD HH:mm"
-                placeholderTextColor={COLORS.muted}
+                placeholderTextColor={COLORS.textSecondary}
                 value={form.start_time}
                 onChangeText={(value) => updateField("start_time", value)}
                 editable={!saving}
@@ -615,7 +634,7 @@ export default function AdminEventsScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="YYYY-MM-DD HH:mm"
-                placeholderTextColor={COLORS.muted}
+                placeholderTextColor={COLORS.textSecondary}
                 value={form.end_time}
                 onChangeText={(value) => updateField("end_time", value)}
                 editable={!saving}
@@ -628,12 +647,15 @@ export default function AdminEventsScreen() {
               </Text>
 
               <Pressable
-                style={[styles.saveButton, saving && styles.disabledButton]}
+                style={[
+                  styles.saveButton,
+                  saving && styles.disabledButton,
+                ]}
                 onPress={() => void saveEvent()}
                 disabled={saving}
               >
                 {saving ? (
-                  <ActivityIndicator color={COLORS.white} />
+                  <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   <>
                     <Ionicons
@@ -643,7 +665,7 @@ export default function AdminEventsScreen() {
                           : "add-circle-outline"
                       }
                       size={20}
-                      color={COLORS.white}
+                      color="#FFFFFF"
                     />
                     <Text style={styles.saveButtonText}>
                       {editingEvent ? "Save Changes" : "Create Event"}
@@ -679,24 +701,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     marginTop: 12,
     fontSize: 14,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 18,
     paddingVertical: 15,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.card,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   backButton: {
     width: 42,
     height: 42,
-    borderRadius: 13,
-    backgroundColor: COLORS.background,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -705,20 +730,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topBarTitle: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 19,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   topBarSubtitle: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginTop: 3,
   },
   adminBadge: {
     height: 40,
     width: 40,
-    borderRadius: 13,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -730,18 +755,23 @@ const styles = StyleSheet.create({
   summaryCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.white,
-    borderRadius: 18,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.large,
     padding: 17,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: 16,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   summaryIcon: {
     width: 48,
     height: 48,
-    borderRadius: 15,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 13,
@@ -750,13 +780,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   summaryLabel: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 10,
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: 1,
   },
   summaryNumber: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 25,
     fontWeight: "800",
     marginTop: 3,
@@ -764,25 +794,25 @@ const styles = StyleSheet.create({
   refreshButton: {
     width: 40,
     height: 40,
-    borderRadius: 13,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
     justifyContent: "center",
     alignItems: "center",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 14,
+    borderRadius: UI.radius.medium,
     paddingHorizontal: 13,
-    height: 49,
+    height: 48,
     marginBottom: 22,
   },
   searchInput: {
     flex: 1,
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     marginLeft: 9,
     fontSize: 13,
     paddingVertical: 8,
@@ -794,12 +824,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 17,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   eventCount: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 12,
   },
   listContent: {
@@ -807,12 +837,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   eventCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 17,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.large,
     padding: 16,
     marginBottom: 13,
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   eventHeader: {
     flexDirection: "row",
@@ -822,8 +857,8 @@ const styles = StyleSheet.create({
   eventIcon: {
     width: 45,
     height: 45,
-    borderRadius: 14,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -832,12 +867,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventTitle: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 15,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   eventCode: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginTop: 5,
   },
@@ -851,14 +886,14 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   dateLabel: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 9,
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   dateValue: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 12,
     lineHeight: 18,
   },
@@ -876,8 +911,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 11,
-    borderRadius: 11,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
     gap: 7,
   },
   editButtonText: {
@@ -891,42 +926,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 11,
-    borderRadius: 11,
-    backgroundColor: COLORS.dangerLight,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.dangerSoft,
     gap: 7,
   },
   deleteButtonText: {
-    color: COLORS.danger,
+    color: COLORS.dangerText,
     fontSize: 13,
     fontWeight: "700",
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 25,
-    paddingVertical: 55,
-  },
-  emptyIcon: {
-    width: 75,
-    height: 75,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    color: COLORS.text,
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  emptyDescription: {
-    color: COLORS.muted,
-    fontSize: 13,
-    textAlign: "center",
-    marginTop: 8,
-    lineHeight: 20,
   },
   fab: {
     position: "absolute",
@@ -938,28 +945,28 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     paddingHorizontal: 19,
     paddingVertical: 15,
-    borderRadius: 16,
+    borderRadius: UI.radius.large,
     gap: 8,
     elevation: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
   fabText: {
-    color: COLORS.white,
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(16, 35, 35, 0.48)",
+    backgroundColor: "rgba(74, 47, 58, 0.45)",
     justifyContent: "flex-end",
   },
   modalCard: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: UI.radius.large + 6,
+    borderTopRightRadius: UI.radius.large + 6,
     paddingHorizontal: 22,
     paddingTop: 23,
     paddingBottom: Platform.OS === "ios" ? 30 : 22,
@@ -972,43 +979,43 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   modalTitle: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 21,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   modalSubtitle: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginTop: 5,
   },
   closeButton: {
     width: 38,
     height: 38,
-    borderRadius: 12,
-    backgroundColor: COLORS.background,
+    borderRadius: UI.radius.small + 2,
+    backgroundColor: COLORS.surface,
     justifyContent: "center",
     alignItems: "center",
   },
   inputLabel: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 12,
     fontWeight: "700",
     marginBottom: 8,
     marginTop: 5,
   },
   input: {
-    height: 49,
+    height: 48,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: "#FBFCFC",
-    borderRadius: 12,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.medium - 2,
     paddingHorizontal: 13,
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 13,
     marginBottom: 15,
   },
   helperText: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 11,
     lineHeight: 17,
     marginTop: 0,
@@ -1017,7 +1024,7 @@ const styles = StyleSheet.create({
   saveButton: {
     height: 50,
     backgroundColor: COLORS.primary,
-    borderRadius: 13,
+    borderRadius: UI.radius.medium,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1027,9 +1034,9 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   saveButtonText: {
-    color: COLORS.white,
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   cancelButton: {
     alignItems: "center",
@@ -1038,7 +1045,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   cancelButtonText: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 13,
     fontWeight: "700",
   },

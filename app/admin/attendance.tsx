@@ -19,6 +19,9 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 
+import EmptyState from "@/components/EmptyState";
+import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
@@ -55,18 +58,6 @@ type EditForm = {
   student_id: string;
   event_id: string;
   scanned_at: string;
-};
-
-const COLORS = {
-  primary: "#246B67",
-  primaryLight: "#E7F3F1",
-  background: "#F5F8F8",
-  white: "#FFFFFF",
-  text: "#203334",
-  muted: "#718181",
-  border: "#E1E9E8",
-  danger: "#C62828",
-  dangerLight: "#FDECEC",
 };
 
 function formatDate(value: string) {
@@ -499,7 +490,7 @@ export default function AdminAttendanceScreen() {
           <Ionicons
             name="checkmark-circle"
             size={21}
-            color={COLORS.primary}
+            color={COLORS.successText}
           />
         </View>
       </View>
@@ -540,7 +531,10 @@ export default function AdminAttendanceScreen() {
 
       <View style={styles.actionRow}>
         <Pressable
-          style={styles.editButton}
+          style={({ pressed }) => [
+            styles.editButton,
+            pressed && styles.pressed,
+          ]}
           onPress={() => openEditModal(item)}
         >
           <Ionicons
@@ -552,13 +546,16 @@ export default function AdminAttendanceScreen() {
         </Pressable>
 
         <Pressable
-          style={styles.deleteButton}
+          style={({ pressed }) => [
+            styles.deleteButton,
+            pressed && styles.pressed,
+          ]}
           onPress={() => deleteRecord(item)}
         >
           <Ionicons
             name="trash-outline"
             size={17}
-            color={COLORS.danger}
+            color={COLORS.dangerText}
           />
           <Text style={styles.deleteButtonText}>Delete</Text>
         </Pressable>
@@ -584,13 +581,16 @@ export default function AdminAttendanceScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
         <Pressable
-          style={styles.backButton}
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressed,
+          ]}
           onPress={() => router.replace("/admin")}
         >
           <Ionicons
             name="arrow-back"
             size={23}
-            color={COLORS.text}
+            color={COLORS.textPrimary}
           />
         </Pressable>
 
@@ -630,7 +630,10 @@ export default function AdminAttendanceScreen() {
           </View>
 
           <Pressable
-            style={styles.refreshButton}
+            style={({ pressed }) => [
+              styles.refreshButton,
+              pressed && styles.pressed,
+            ]}
             onPress={() => void loadAttendance(true)}
             disabled={refreshing}
           >
@@ -646,13 +649,13 @@ export default function AdminAttendanceScreen() {
           <Ionicons
             name="search-outline"
             size={20}
-            color={COLORS.muted}
+            color={COLORS.textSecondary}
           />
 
           <TextInput
             style={styles.searchInput}
             placeholder="Search student, event, or code..."
-            placeholderTextColor={COLORS.muted}
+            placeholderTextColor={COLORS.textSecondary}
             value={search}
             onChangeText={setSearch}
             autoCapitalize="none"
@@ -663,7 +666,7 @@ export default function AdminAttendanceScreen() {
               <Ionicons
                 name="close-circle"
                 size={20}
-                color={COLORS.muted}
+                color={COLORS.textSecondary}
               />
             </Pressable>
           )}
@@ -690,25 +693,15 @@ export default function AdminAttendanceScreen() {
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <Ionicons
-                  name="document-text-outline"
-                  size={35}
-                  color={COLORS.primary}
-                />
-              </View>
-
-              <Text style={styles.emptyTitle}>
-                No records found
-              </Text>
-
-              <Text style={styles.emptyDescription}>
-                {search
+            <EmptyState
+              icon="document-text-outline"
+              title="No records found"
+              message={
+                search
                   ? "Try a different search term."
-                  : "Attendance records will appear here after students scan their QR codes."}
-              </Text>
-            </View>
+                  : "Attendance records will appear here after students scan their QR codes."
+              }
+            />
           }
         />
       </View>
@@ -743,7 +736,7 @@ export default function AdminAttendanceScreen() {
                 <Ionicons
                   name="close"
                   size={23}
-                  color={COLORS.text}
+                  color={COLORS.textPrimary}
                 />
               </Pressable>
             </View>
@@ -755,7 +748,10 @@ export default function AdminAttendanceScreen() {
               <Text style={styles.inputLabel}>Student</Text>
 
               <Pressable
-                style={styles.selectButton}
+                style={({ pressed }) => [
+                  styles.selectButton,
+                  pressed && styles.pressed,
+                ]}
                 onPress={() => openSelector("student")}
                 disabled={saving}
               >
@@ -773,14 +769,17 @@ export default function AdminAttendanceScreen() {
                 <Ionicons
                   name="chevron-down"
                   size={20}
-                  color={COLORS.muted}
+                  color={COLORS.textSecondary}
                 />
               </Pressable>
 
               <Text style={styles.inputLabel}>Event</Text>
 
               <Pressable
-                style={styles.selectButton}
+                style={({ pressed }) => [
+                  styles.selectButton,
+                  pressed && styles.pressed,
+                ]}
                 onPress={() => openSelector("event")}
                 disabled={saving}
               >
@@ -798,7 +797,7 @@ export default function AdminAttendanceScreen() {
                 <Ionicons
                   name="chevron-down"
                   size={20}
-                  color={COLORS.muted}
+                  color={COLORS.textSecondary}
                 />
               </Pressable>
 
@@ -809,7 +808,7 @@ export default function AdminAttendanceScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="YYYY-MM-DD HH:mm"
-                placeholderTextColor={COLORS.muted}
+                placeholderTextColor={COLORS.textSecondary}
                 value={form.scanned_at}
                 onChangeText={(value) =>
                   setForm((current) => ({
@@ -835,13 +834,13 @@ export default function AdminAttendanceScreen() {
                 disabled={saving}
               >
                 {saving ? (
-                  <ActivityIndicator color={COLORS.white} />
+                  <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   <>
                     <Ionicons
                       name="checkmark-circle-outline"
                       size={20}
-                      color={COLORS.white}
+                      color="#FFFFFF"
                     />
                     <Text style={styles.saveButtonText}>
                       Save Correction
@@ -886,7 +885,7 @@ export default function AdminAttendanceScreen() {
                 <Ionicons
                   name="close"
                   size={24}
-                  color={COLORS.text}
+                  color={COLORS.textPrimary}
                 />
               </Pressable>
             </View>
@@ -895,7 +894,7 @@ export default function AdminAttendanceScreen() {
               <Ionicons
                 name="search-outline"
                 size={19}
-                color={COLORS.muted}
+                color={COLORS.textSecondary}
               />
 
               <TextInput
@@ -905,7 +904,7 @@ export default function AdminAttendanceScreen() {
                     ? "Search student..."
                     : "Search event..."
                 }
-                placeholderTextColor={COLORS.muted}
+                placeholderTextColor={COLORS.textSecondary}
                 value={selectorSearch}
                 onChangeText={setSelectorSearch}
                 autoCapitalize="none"
@@ -929,7 +928,10 @@ export default function AdminAttendanceScreen() {
                 }
                 renderItem={({ item }) => (
                   <Pressable
-                    style={styles.optionRow}
+                    style={({ pressed }) => [
+                      styles.optionRow,
+                      pressed && styles.pressed,
+                    ]}
                     onPress={() => selectStudent(item)}
                   >
                     <View style={styles.optionIcon}>
@@ -973,7 +975,10 @@ export default function AdminAttendanceScreen() {
                 }
                 renderItem={({ item }) => (
                   <Pressable
-                    style={styles.optionRow}
+                    style={({ pressed }) => [
+                      styles.optionRow,
+                      pressed && styles.pressed,
+                    ]}
                     onPress={() => selectEvent(item)}
                   >
                     <View style={styles.optionIcon}>
@@ -1032,23 +1037,26 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 13,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 18,
     paddingVertical: 15,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.card,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   backButton: {
     width: 42,
     height: 42,
-    borderRadius: 13,
-    backgroundColor: COLORS.background,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -1057,20 +1065,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topBarTitle: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 18,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   topBarSubtitle: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginTop: 4,
   },
   adminIcon: {
     width: 40,
     height: 40,
-    borderRadius: 13,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1082,18 +1090,23 @@ const styles = StyleSheet.create({
   summaryCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.white,
-    borderRadius: 17,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.large,
     padding: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: 16,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   summaryIcon: {
     width: 48,
     height: 48,
-    borderRadius: 15,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 13,
@@ -1102,13 +1115,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   summaryLabel: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 10,
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: 1,
   },
   summaryNumber: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 25,
     fontWeight: "800",
     marginTop: 3,
@@ -1116,25 +1129,25 @@ const styles = StyleSheet.create({
   refreshButton: {
     width: 40,
     height: 40,
-    borderRadius: 13,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   searchBox: {
-    height: 49,
+    height: 48,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 13,
-    backgroundColor: COLORS.white,
-    borderRadius: 13,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.medium - 2,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: 22,
   },
   searchInput: {
     flex: 1,
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 13,
     marginLeft: 9,
     paddingVertical: 8,
@@ -1146,12 +1159,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 17,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   recordCount: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 12,
   },
   listContent: {
@@ -1159,12 +1172,17 @@ const styles = StyleSheet.create({
     paddingBottom: 25,
   },
   recordCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 17,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.large,
     padding: 16,
     marginBottom: 13,
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   recordHeader: {
     flexDirection: "row",
@@ -1174,8 +1192,8 @@ const styles = StyleSheet.create({
   studentIcon: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -1184,12 +1202,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   studentName: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   studentEmail: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 11,
     marginTop: 5,
   },
@@ -1206,19 +1224,19 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   infoLabel: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 9,
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   infoValue: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 12,
     lineHeight: 18,
   },
   eventCode: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 11,
     marginTop: 3,
   },
@@ -1236,8 +1254,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 11,
-    borderRadius: 11,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
     gap: 7,
   },
   editButtonText: {
@@ -1251,51 +1269,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 11,
-    borderRadius: 11,
-    backgroundColor: COLORS.dangerLight,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.dangerSoft,
     gap: 7,
   },
   deleteButtonText: {
-    color: COLORS.danger,
+    color: COLORS.dangerText,
     fontSize: 12,
     fontWeight: "700",
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 50,
-  },
-  emptyIcon: {
-    width: 75,
-    height: 75,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    color: COLORS.text,
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  emptyDescription: {
-    color: COLORS.muted,
-    fontSize: 12,
-    lineHeight: 19,
-    textAlign: "center",
-    marginTop: 8,
   },
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(16, 35, 35, 0.48)",
+    backgroundColor: "rgba(74, 47, 58, 0.45)",
   },
   modalCard: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: UI.radius.large + 6,
+    borderTopRightRadius: UI.radius.large + 6,
     paddingHorizontal: 22,
     paddingTop: 23,
     paddingBottom: Platform.OS === "ios" ? 30 : 22,
@@ -1312,12 +1303,12 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   modalTitle: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 20,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   modalSubtitle: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginTop: 5,
     lineHeight: 18,
@@ -1325,13 +1316,13 @@ const styles = StyleSheet.create({
   closeButton: {
     width: 38,
     height: 38,
-    borderRadius: 12,
-    backgroundColor: COLORS.background,
+    borderRadius: UI.radius.small + 2,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   inputLabel: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 12,
     fontWeight: "700",
     marginBottom: 8,
@@ -1341,8 +1332,8 @@ const styles = StyleSheet.create({
     minHeight: 58,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: "#FBFCFC",
-    borderRadius: 12,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.medium - 2,
     paddingHorizontal: 13,
     paddingVertical: 10,
     marginBottom: 15,
@@ -1354,28 +1345,28 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   selectValue: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 13,
     fontWeight: "700",
   },
   selectHint: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 11,
     marginTop: 4,
   },
   input: {
-    height: 49,
+    height: 48,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: "#FBFCFC",
-    borderRadius: 12,
+    backgroundColor: COLORS.card,
+    borderRadius: UI.radius.medium - 2,
     paddingHorizontal: 13,
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 13,
     marginBottom: 14,
   },
   helperText: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 11,
     lineHeight: 17,
     marginBottom: 18,
@@ -1383,7 +1374,7 @@ const styles = StyleSheet.create({
   saveButton: {
     height: 50,
     backgroundColor: COLORS.primary,
-    borderRadius: 13,
+    borderRadius: UI.radius.medium,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1393,9 +1384,9 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   saveButtonText: {
-    color: COLORS.white,
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   cancelButton: {
     alignItems: "center",
@@ -1404,20 +1395,20 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   cancelButtonText: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 13,
     fontWeight: "700",
   },
   selectorOverlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(16, 35, 35, 0.48)",
+    backgroundColor: "rgba(74, 47, 58, 0.45)",
   },
   selectorCard: {
     height: "78%",
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: UI.radius.large + 6,
+    borderTopRightRadius: UI.radius.large + 6,
     paddingHorizontal: 20,
     paddingTop: 22,
     paddingBottom: Platform.OS === "ios" ? 28 : 18,
@@ -1433,8 +1424,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: UI.radius.medium - 2,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: 12,
@@ -1452,8 +1443,8 @@ const styles = StyleSheet.create({
   optionIcon: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.primaryLight,
+    borderRadius: UI.radius.medium - 2,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 11,
@@ -1463,17 +1454,17 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   optionTitle: {
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     fontSize: 13,
     fontWeight: "700",
   },
   optionSubtitle: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 11,
     marginTop: 4,
   },
   noOptions: {
-    color: COLORS.muted,
+    color: COLORS.textSecondary,
     fontSize: 13,
     textAlign: "center",
     paddingVertical: 30,

@@ -16,6 +16,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAuth, signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { COLORS } from "@/constants/colors";
+import { UI } from "@/constants/ui";
 
 type DashboardStats = {
   users: number;
@@ -294,64 +295,35 @@ export default function AdminScreen() {
                 title="Total Users"
                 value={stats.users}
                 icon="people-outline"
+                onPress={() => router.push("/admin/users")}
               />
               <StatCard
                 title="Total Events"
                 value={stats.events}
                 icon="calendar-outline"
+                onPress={() => router.push("/admin/events")}
               />
               <StatCard
                 title="Attendance Records"
                 value={stats.attendance}
                 icon="clipboard-outline"
+                onPress={() => router.push("/admin/attendance")}
               />
               <StatCard
                 title="Students"
                 value={stats.students}
                 icon="school-outline"
+                onPress={() => router.push("/admin/users")}
               />
               <StatCard
                 title="Teachers"
                 value={stats.teachers}
                 icon="person-outline"
+                onPress={() => router.push("/admin/users")}
               />
             </View>
           </>
         )}
-
-        {/* Management menu */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Administration</Text>
-          <Text style={styles.sectionCaption}>Select a management area</Text>
-        </View>
-
-        <View style={styles.menuList}>
-          {MENU_ITEMS.map((item) => (
-            <Pressable
-              key={item.title}
-              style={({ pressed }) => [
-                styles.menuCard,
-                pressed && styles.menuCardPressed,
-              ]}
-              onPress={() => router.push(item.route)}
-            >
-              <View style={styles.menuIcon}>
-                <Ionicons name={item.icon} size={24} color={COLORS.primary} />
-              </View>
-
-              <View style={styles.menuText}>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuDescription}>{item.description}</Text>
-              </View>
-
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={COLORS.textSecondary}
-              />
-            </Pressable>
-          ))}
-        </View>
 
         {/* Sign out */}
         <Pressable
@@ -377,20 +349,32 @@ function StatCard({
   title,
   value,
   icon,
+  onPress,
 }: {
   title: string;
   value: number;
   icon: React.ComponentProps<typeof Ionicons>["name"];
+  onPress: () => void;
 }) {
   return (
-    <View style={styles.statCard}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}: ${value}. Open management.`}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.statCard,
+        pressed && styles.statCardPressed,
+      ]}
+    >
       <View style={styles.statIcon}>
         <Ionicons name={icon} size={22} color={COLORS.primary} />
       </View>
 
       <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-    </View>
+      <Text style={styles.statTitle} numberOfLines={2}>
+        {title}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -401,7 +385,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 56,
+    paddingTop: 24,
     paddingBottom: 36,
   },
   center: {
@@ -459,10 +443,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     backgroundColor: COLORS.card,
-    borderRadius: 18,
+    borderRadius: UI.radius.large,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: 28,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   avatar: {
     width: 46,
@@ -512,17 +501,29 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: 12,
     marginBottom: 28,
   },
   statCard: {
+    width: "48%",
     backgroundColor: COLORS.card,
-    borderRadius: 16,
+    borderRadius: UI.radius.large,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 17,
-    minHeight: 125,
-    justifyContent: "center",
+    minHeight: 155,
+    justifyContent: "space-between",
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  statCardPressed: {
+    opacity: 0.75,
   },
   statIcon: {
     width: 40,
@@ -553,9 +554,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 16,
+    borderRadius: UI.radius.large,
     padding: 15,
     gap: 12,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   menuCardPressed: {
     opacity: 0.7,
